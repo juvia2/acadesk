@@ -71,6 +71,40 @@
 - 보호자마다 수신 언어(preferred_language, 기본 ko)를 MVP부터 둠 → 다국어 안내 연결
 </aside>
 
+## 형제 연동
+
+`MVP (연결·묶음 안내) · 확장 (할인·합산 수납)` · 담당: lshee9008 (제안)
+
+<aside>
+📁
+
+- backend/src/acadesk/modules/students/households.py
+- backend/src/acadesk/modules/imports/ (형제 연결 후보)
+- backend/src/acadesk/modules/billing/discounts.py
+- backend/src/acadesk/modules/billing/allocation.py
+- backend/src/acadesk/workers/send.py (발송 전 묶기 단계)
+- frontend/src/app/students/[id]/ (형제 표시)
+- frontend/src/app/review/ (연결 후보 확인)
+</aside>
+
+<aside>
+💡 기획 요구: 학생–보호자 1:N, 학부모 1인당 하루 발송 상한, 입금자명 불일치 보류. 형제가 같이 다니는 학원이 많아 안내·수납이 학생 단위로 흩어짐
+</aside>
+
+<aside>
+➡️
+
+- 가구(household) 테이블로 형제를 묶음. 학생은 household_id를 가지고, 보호자는 학생–보호자 연결로 공유
+- 연결은 자동 확정하지 않음: 업로드 때 같은 보호자 연락처가 여러 학생에 있으면 '형제로 연결할까요?' 후보 → 담당자 확인. 연결·해제는 감사 로그에 기록
+- 묶음 안내 (MVP): 같은 보호자에게 같은 날 가는 안내를 한 통으로 합침. 각 건의 발송 직전 재검증은 따로 하고, 취소된 줄만 빼고 발송
+- 입금자명 매칭: 가구 단위로 찾음 (형 이름으로 동생 학원비를 내는 경우)
+- 합산 수납 (확장): 한 번 입금으로 형제 청구서 여러 건을 낼 때 오래된 청구부터 나눠 반영. 금액이 딱 맞지 않으면 보류하고 담당자가 배분
+- 형제 할인 (확장): 학원별 규칙(예: 둘째 10%)을 청구 생성 때 할인 줄로 기록. 형제가 퇴원·휴원하면 할인 재계산 후보를 만들고 담당자가 확인
+- 형제가 같은 날 함께 결석하면 결석 확인 알림을 한 건으로 (가족 일정일 가능성)
+- 학생 화면·상담 전 요약에 형제 목록과 가구 전체 수납 상태를 표시
+- 개인정보: 보호자가 다른 형제(재혼·조부모 양육 등)는 자동 연결하지 않음. 한 보호자에게는 그 보호자와 연결된 학생 정보만 보냄
+</aside>
+
 ## 수납
 
 `MVP` · 담당: Olivia (제안)
@@ -466,28 +500,6 @@
 
 - 통장 입금 내역 CSV 업로드 → 보호자 이름·형제·금액·날짜로 학생 매칭 후보 제시
 - 확실하지 않으면 '확인 필요함'으로, 담당자가 한 번 연결하면 다음 달부터 자동 매칭
-</aside>
-
-## 형제 묶음 안내
-
-`제안 · MVP 추천` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/workers/send.py (발송 전 묶기 단계)
-- backend/src/acadesk/modules/messaging/
-</aside>
-
-<aside>
-💡 기획 요구: 학부모 1인당 하루 발송 상한, 학생–보호자 1:N
-</aside>
-
-<aside>
-➡️
-
-- 같은 보호자에게 같은 날 가는 안내(형제 둘의 수납 등)를 한 통으로 합침
-- 묶인 각 건의 발송 직전 재검증은 따로 수행, 하나라도 취소되면 그 줄만 빼고 발송
 </aside>
 
 ## 휴원·방학 캘린더

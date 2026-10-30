@@ -88,6 +88,8 @@
 | 핵심 테이블 | academy, branch, user/role, student, guardian, invoice, payment, attendance, homework, notice_candidate, message, approval, send_log, reply, audit_log | 회의에서 관계도 초안을 함께 그림 | |
 | 테넌트 격리 | 모든 테이블에 `academy_id` + 코드에서 필터 · Postgres RLS 추가 | `academy_id` 필수 + 공통 쿼리 헬퍼. RLS는 다지점 단계에서 | |
 | 학생–학부모 관계 | 1:1 · 1:N (형제, 보호자 여러 명) | 1:N | |
+| 형제 연동 | 가구(household) 테이블 · 보호자 공유로만 판단 | 가구 테이블 + 담당자 확인 후 연결. MVP는 연결·묶음 안내·입금 매칭 | |
+| 형제 할인 | 원본 장부에 이미 반영됨 · 우리가 계산 | MVP는 원본 금액을 그대로 사용, 계산은 확장 단계 (파일럿 학원의 할인 방식 확인) | |
 | 금액 타입 | 정수(원) · Decimal | 정수(원) | |
 | 이력 보존 | 덮어쓰기 · 변경 이력 보존 | 수납·발송·승인은 이력 보존 (감사 로그) | |
 
