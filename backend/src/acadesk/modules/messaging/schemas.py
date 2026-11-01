@@ -219,3 +219,84 @@ class ReplyUpdate(BaseModel):
     )
     status: ReplyStatus | None = None
     note: str | None = None
+
+
+# ── 긴급 문자 ───────────────────────────────────────
+
+
+class EmergencyReason(StrEnum):
+    SAFETY = "safety"  # 부상·사고·연락 두절
+    HEALTH = "health"
+    CLOSURE = "closure"  # 재난·긴급 휴원
+    OTHER = "other"
+
+
+class EmergencyTargetType(StrEnum):
+    STUDENTS = "students"
+    LECTURE = "lecture"
+    ACADEMY = "academy"  # 관리자만
+
+
+class EmergencyTarget(BaseModel):
+    type: EmergencyTargetType
+    student_ids: list[uuid.UUID] = []
+    lecture_id: uuid.UUID | None = None
+
+
+class EmergencyPreviewBody(BaseModel):
+    reason: EmergencyReason
+    body: str = Field(max_length=1000)
+    target: EmergencyTarget
+
+
+class EmergencyPreview(BaseModel):
+    recipient_count: int = Field(description="받을 학부모 수 (형제는 한 번만)")
+    sms_count: int = Field(
+        description="문자로 나갈 수 (앱 푸시만 받는 사람 제외 안 함: 긴급은 둘 다)"
+    )
+    guardians_without_phone: int
+    languages: dict[str, int] = Field(description="수신 언어별 인원. ko 외에는 번역문을 같이 보냄")
+    segments: int = Field(description="문자 길이로 나뉘는 건수 (LMS 여부 판단)")
+    sent_today: int
+    daily_limit: int
+    preview_token: str = Field(
+        description="발송 요청에 그대로 넣는다. 미리 보기 없이 발송하지 못하게"
+    )
+
+
+class EmergencySendBody(EmergencyPreviewBody):
+    preview_token: str
+
+
+class EmergencyStatus(StrEnum):
+    SENDING = "sending"
+    SENT = "sent"
+    PARTIALLY_FAILED = "partially_failed"
+
+
+class EmergencyMessageOut(BaseModel):
+    id: uuid.UUID
+    reason: EmergencyReason
+    body: str
+    target: EmergencyTarget
+    target_label: str = Field(description="예: 중2 수학 A 학부모 18명")
+    sent_by: uuid.UUID
+    sent_by_name: str
+    recipient_count: int
+    delivered_count: int = 0
+    failed_count: int = 0
+    status: EmergencyStatus
+    created_at: datetime
+
+
+class EmergencyRecipient(BaseModel):
+    guardian_name: str
+    student_names: list[str]
+    phone_masked: str
+    language: str
+    sms_status: MessageStatus | None = None
+    push_sent: bool
+
+
+class EmergencyMessageDetail(EmergencyMessageOut):
+    recipients: list[EmergencyRecipient]

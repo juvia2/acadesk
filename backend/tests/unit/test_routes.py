@@ -41,7 +41,7 @@ def test_openapi_operations_have_stage(app):
         if not path.startswith("/api/v1"):
             continue
         for method, op in ops.items():
-            assert op.get("x-stage") in {"MVP", "확장", "제안"}, f"{method} {path}"
+            assert op.get("x-stage") in {"MVP", "2단계", "3단계"}, f"{method} {path}"
             assert op.get("summary"), f"{method} {path} 요약 없음"
 
 
@@ -65,6 +65,15 @@ def test_open_endpoints_skip_login(app):
     )
     token = "t" * 32
     assert client.get(f"/api/v1/public/replies/{token}").status_code == 501
+    assert client.get("/api/v1/auth/invitations/ABCD1234").status_code == 501
+    signup = {
+        "code": "ABCD1234",
+        "name": "n",
+        "email": "a@b.c",
+        "password": "12345678",
+        "agree_terms": True,
+    }
+    assert client.post("/api/v1/auth/signup", json=signup).status_code == 501
     assert client.post("/api/v1/webhooks/sms/mock/delivery", json={}).status_code == 501
 
 
@@ -73,7 +82,7 @@ def test_open_endpoints_skip_login(app):
     [
         ("patch", "/api/v1/academy", {}),
         ("put", "/api/v1/rules/settings", {}),
-        ("post", "/api/v1/users/invitations", {"email": "a@b.c", "name": "n", "role": "teacher"}),
+        ("post", "/api/v1/invitations", {"role": "teacher", "email": "a@b.c"}),
         ("get", "/api/v1/invoices", None),
         ("get", "/api/v1/audit-logs", None),
     ],
@@ -84,14 +93,57 @@ def test_teacher_blocked_from_admin_endpoints(client_as, method, path, body):
     assert res.status_code == 403
 
 
-def test_teacher_can_record_attendance(client_as):
+def test_teacher_can_run_attendance(client_as):
     client = client_as(Role.TEACHER)
-    body = {
-        "items": [
-            {"student_id": ANY_ID, "class_id": ANY_ID, "date": "2026-11-02", "status": "absent"}
-        ]
-    }
-    assert client.post("/api/v1/attendance/batch", json=body).status_code == 501
+    assert client.post(f"/api/v1/lecture-sessions/{ANY_ID}/attendance/open").status_code == 501
+    assert client.get(f"/api/v1/lecture-sessions/{ANY_ID}/attendance/qr").status_code == 501
+
+
+def test_only_students_check_in(client_as):
+    body = {"token": "x" * 20}
+    assert client_as(Role.STUDENT).post("/api/v1/attendance/check-in", json=body).status_code == 501
+    for role in (Role.TEACHER, Role.PARENT, Role.OWNER):
+        res = client_as(role).post("/api/v1/attendance/check-in", json=body)
+        assert res.status_code == 403, role
+
+
+@pytest.mark.parametrize(
+    ("role", "method", "path", "expected"),
+    [
+        # 학원 관리자·교사는 커뮤니티 글을 볼 수 없다 (기획안 v2 8-2)
+        (Role.OWNER, "get", "/api/v1/community/posts", 403),
+        (Role.TEACHER, "get", "/api/v1/community/posts", 403),
+        (Role.PARENT, "get", "/api/v1/community/posts", 501),
+        # 학원은 건의 글과 통계만
+        (Role.OWNER, "get", "/api/v1/community/academy/suggestions", 501),
+        (Role.PARENT, "get", "/api/v1/community/academy/suggestions", 403),
+        # 신고 처리는 플랫폼 운영자만
+        (Role.OWNER, "get", "/api/v1/ops/community/queue", 403),
+        (Role.OPERATOR, "get", "/api/v1/ops/community/queue", 501),
+        # 운영자는 학원 데이터에 접근하지 못한다
+        (Role.OPERATOR, "get", "/api/v1/students", 403),
+        # 학생·학부모는 직원 화면에 접근하지 못한다
+        (Role.STUDENT, "get", "/api/v1/students", 403),
+        (Role.PARENT, "get", "/api/v1/attendance", 403),
+        (Role.PARENT, "post", "/api/v1/emergency-messages/preview", 403),
+        # 리포트는 학부모 본인, 학생 화면은 학생 본인
+        (Role.PARENT, "get", f"/api/v1/children/{ANY_ID}/report", 501),
+        (Role.STUDENT, "get", f"/api/v1/children/{ANY_ID}/report", 403),
+        (Role.STUDENT, "get", "/api/v1/me/schedule", 501),
+        # 공지·알림은 구성원 모두
+        (Role.STUDENT, "get", "/api/v1/notices", 501),
+        (Role.PARENT, "get", "/api/v1/notifications", 501),
+    ],
+)
+def test_v2_role_boundaries(client_as, role, method, path, expected):
+    assert client_as(role).request(method, path).status_code == expected
+
+
+def test_parent_and_student_can_ask(client_as):
+    body = {"title": "질문", "body": "내용"}
+    for role in (Role.STUDENT, Role.PARENT):
+        assert client_as(role).post("/api/v1/questions", json=body).status_code == 501
+    assert client_as(Role.TEACHER).post("/api/v1/questions", json=body).status_code == 403
 
 
 def test_owner_passes_role_checks(client_as):
@@ -107,6 +159,8 @@ def test_owner_passes_role_checks(client_as):
         "/api/v1/attendance/alerts",
         "/api/v1/deposit-matches",
         "/api/v1/imports/kinds/students/fields",
+        "/api/v1/questions",
+        "/api/v1/emergency-messages",
     ],
 )
 def test_static_paths_not_captured_by_id_paths(client_as, path):

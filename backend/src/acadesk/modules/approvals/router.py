@@ -9,10 +9,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
 
-from acadesk.api.deps import MVP, CurrentUserDep, access
+from acadesk.api.deps import STAGE3, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import BulkResult, IdsBody, Page, PageParams, page_params
-from acadesk.core.security import ALL_ROLES
+from acadesk.core.security import STAFF
 from acadesk.modules.messaging.schemas import NoticeKind
 
 from .schemas import (
@@ -27,7 +27,7 @@ from .schemas import (
 router = APIRouter(prefix="/approvals", tags=["승인함"])
 
 
-@router.get("", summary="승인함 목록", **access(MVP, *ALL_ROLES))
+@router.get("", summary="승인함 목록", **access(STAGE3, *STAFF))
 def list_approvals(
     user: CurrentUserDep,
     paging: Annotated[PageParams, Depends(page_params)],
@@ -42,7 +42,7 @@ def list_approvals(
     "/bulk-approve",
     summary="여러 건 한 번에 승인",
     description="문구 수정 없이 승인한다. 건별로 성공·실패를 돌려준다.",
-    **access(MVP, *ALL_ROLES),
+    **access(STAGE3, *STAFF),
 )
 def bulk_approve(user: CurrentUserDep, body: IdsBody) -> BulkResult:
     raise not_implemented()
@@ -52,7 +52,7 @@ def bulk_approve(user: CurrentUserDep, body: IdsBody) -> BulkResult:
     "/{approval_id}",
     summary="승인 상세",
     description="수신자, 사실, 근거, 문구를 나란히 보여준다.",
-    **access(MVP, *ALL_ROLES),
+    **access(STAGE3, *STAFF),
 )
 def get_approval(user: CurrentUserDep, approval_id: uuid.UUID) -> ApprovalDetail:
     raise not_implemented()
@@ -63,18 +63,18 @@ def get_approval(user: CurrentUserDep, approval_id: uuid.UUID) -> ApprovalDetail
     summary="승인 (수정 후 승인 포함)",
     description="승인 시점의 사실을 스냅샷으로 저장한다. 발송 직전에 DB를 다시 확인해 "
     "스냅샷과 다르면(예: 그 사이 납부) 발송을 취소한다.",
-    **access(MVP, *ALL_ROLES),
+    **access(STAGE3, *STAFF),
 )
 def approve(user: CurrentUserDep, approval_id: uuid.UUID, body: ApproveBody) -> ApprovalDetail:
     raise not_implemented()
 
 
-@router.post("/{approval_id}/hold", summary="보류", **access(MVP, *ALL_ROLES))
+@router.post("/{approval_id}/hold", summary="보류", **access(STAGE3, *STAFF))
 def hold(user: CurrentUserDep, approval_id: uuid.UUID, body: HoldBody) -> ApprovalDetail:
     raise not_implemented()
 
 
-@router.post("/{approval_id}/reject", summary="반려", **access(MVP, *ALL_ROLES))
+@router.post("/{approval_id}/reject", summary="반려", **access(STAGE3, *STAFF))
 def reject(user: CurrentUserDep, approval_id: uuid.UUID, body: RejectBody) -> ApprovalDetail:
     raise not_implemented()
 

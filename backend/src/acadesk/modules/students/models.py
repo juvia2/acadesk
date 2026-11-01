@@ -1,7 +1,16 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
-from sqlalchemy import DateTime, ForeignKey, Index, LargeBinary, String, Text, UniqueConstraint
+from sqlalchemy import (
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    LargeBinary,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import ARRAY, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -26,6 +35,7 @@ class Student(IdMixin, TenantMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(100))
     grade: Mapped[str | None] = mapped_column(String(32))
     school: Mapped[str | None] = mapped_column(String(100))
+    birth_date: Mapped[date | None] = mapped_column(Date)  # 만 14세 미만 가입 동의 판단
     status: Mapped[StudentStatus] = mapped_column(
         str_enum(StudentStatus, 16), default=StudentStatus.ACTIVE
     )

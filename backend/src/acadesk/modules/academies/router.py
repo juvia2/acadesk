@@ -4,10 +4,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
 
-from acadesk.api.deps import MVP, PROPOSED, CurrentUserDep, access
+from acadesk.api.deps import MVP, STAGE2, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
-from acadesk.core.security import ALL_ROLES, STAFF_ADMIN, Role
+from acadesk.core.security import STAFF, STAFF_ADMIN, Role
 
 from .schemas import (
     AcademyOut,
@@ -17,24 +17,23 @@ from .schemas import (
     BranchUpdate,
     CalendarEventCreate,
     CalendarEventOut,
-    ClassCreate,
-    ClassOut,
-    ClassUpdate,
-    EnrollBody,
-    UserInvite,
+    InvitationBulkCreate,
+    InvitationCreate,
+    InvitationOut,
+    InvitationStatus,
     UserOut,
     UserUpdate,
 )
 
 academy_router = APIRouter(prefix="/academy", tags=["학원"])
 users_router = APIRouter(prefix="/users", tags=["사용자"])
-classes_router = APIRouter(prefix="/classes", tags=["반"])
+invitations_router = APIRouter(prefix="/invitations", tags=["초대 코드"])
 
 
 # ── 학원 ─────────────────────────────────────────────
 
 
-@academy_router.get("", summary="내 학원 정보", **access(MVP, *ALL_ROLES))
+@academy_router.get("", summary="내 학원 정보", **access(MVP, *STAFF))
 def get_academy(user: CurrentUserDep) -> AcademyOut:
     raise not_implemented()
 
@@ -44,7 +43,7 @@ def update_academy(user: CurrentUserDep, body: AcademyUpdate) -> AcademyOut:
     raise not_implemented()
 
 
-@academy_router.get("/branches", summary="지점 목록", **access(MVP, *ALL_ROLES))
+@academy_router.get("/branches", summary="지점 목록", **access(MVP, *STAFF))
 def list_branches(user: CurrentUserDep) -> list[BranchOut]:
     raise not_implemented()
 
@@ -68,7 +67,7 @@ def update_branch(user: CurrentUserDep, branch_id: uuid.UUID, body: BranchUpdate
     "/calendar",
     summary="휴원·방학·공휴일 목록",
     description="규칙 엔진이 쉬는 날에는 결석 후보를 만들지 않고, 수납 단계를 영업일로 셀 때 쓴다.",
-    **access(PROPOSED, *ALL_ROLES),
+    **access(STAGE2, *STAFF),
 )
 def list_calendar(
     user: CurrentUserDep,
@@ -82,7 +81,7 @@ def list_calendar(
     "/calendar",
     summary="휴원·방학·공휴일 등록",
     status_code=status.HTTP_201_CREATED,
-    **access(PROPOSED, *STAFF_ADMIN),
+    **access(STAGE2, *STAFF_ADMIN),
 )
 def create_calendar_event(user: CurrentUserDep, body: CalendarEventCreate) -> CalendarEventOut:
     raise not_implemented()
@@ -92,7 +91,7 @@ def create_calendar_event(user: CurrentUserDep, body: CalendarEventCreate) -> Ca
     "/calendar/{event_id}",
     summary="휴원·방학·공휴일 삭제",
     status_code=status.HTTP_204_NO_CONTENT,
-    **access(PROPOSED, *STAFF_ADMIN),
+    **access(STAGE2, *STAFF_ADMIN),
 )
 def delete_calendar_event(user: CurrentUserDep, event_id: uuid.UUID) -> None:
     raise not_implemented()
@@ -101,23 +100,12 @@ def delete_calendar_event(user: CurrentUserDep, event_id: uuid.UUID) -> None:
 # ── 사용자 ───────────────────────────────────────────
 
 
-@users_router.get("", summary="직원 목록", **access(MVP, *STAFF_ADMIN))
+@users_router.get("", summary="계정 목록", **access(MVP, *STAFF_ADMIN))
 def list_users(
     user: CurrentUserDep,
     paging: Annotated[PageParams, Depends(page_params)],
     role: Role | None = None,
 ) -> Page[UserOut]:
-    raise not_implemented()
-
-
-@users_router.post(
-    "/invitations",
-    summary="직원 초대",
-    description="초대 메일을 보내고, 수락하면 계정이 활성화된다.",
-    status_code=status.HTTP_201_CREATED,
-    **access(MVP, Role.OWNER),
-)
-def invite_user(user: CurrentUserDep, body: UserInvite) -> UserOut:
     raise not_implemented()
 
 
@@ -137,48 +125,52 @@ def deactivate_user(user: CurrentUserDep, user_id: uuid.UUID) -> None:
     raise not_implemented()
 
 
-# ── 반 ───────────────────────────────────────────────
+# ── 초대 코드 ───────────────────────────────────────
 
 
-@classes_router.get("", summary="반 목록", **access(MVP, *ALL_ROLES))
-def list_classes(
-    user: CurrentUserDep,
-    teacher_id: uuid.UUID | None = None,
-    branch_id: uuid.UUID | None = None,
-) -> list[ClassOut]:
-    raise not_implemented()
-
-
-@classes_router.post(
-    "", summary="반 만들기", status_code=status.HTTP_201_CREATED, **access(MVP, *STAFF_ADMIN)
+@invitations_router.post(
+    "",
+    summary="초대 코드 발급",
+    description="교사·학생·학부모 가입용 일회용 코드. 코드 원문은 이 응답에서만 보인다 (DB에는 해시).",
+    status_code=status.HTTP_201_CREATED,
+    **access(MVP, *STAFF_ADMIN),
 )
-def create_class(user: CurrentUserDep, body: ClassCreate) -> ClassOut:
+def create_invitation(user: CurrentUserDep, body: InvitationCreate) -> InvitationOut:
     raise not_implemented()
 
 
-@classes_router.get("/{class_id}", summary="반 상세", **access(MVP, *ALL_ROLES))
-def get_class(user: CurrentUserDep, class_id: uuid.UUID) -> ClassOut:
+@invitations_router.post(
+    "/bulk",
+    summary="학생·학부모 초대 코드 일괄 발급",
+    description="명부 업로드 뒤 학생별 코드와 기본 보호자 코드를 한 번에 만든다. 안내문 인쇄용.",
+    status_code=status.HTTP_201_CREATED,
+    **access(MVP, *STAFF_ADMIN),
+)
+def bulk_create_invitations(
+    user: CurrentUserDep, body: InvitationBulkCreate
+) -> list[InvitationOut]:
     raise not_implemented()
 
 
-@classes_router.patch("/{class_id}", summary="반 수정", **access(MVP, *STAFF_ADMIN))
-def update_class(user: CurrentUserDep, class_id: uuid.UUID, body: ClassUpdate) -> ClassOut:
+@invitations_router.get("", summary="초대 코드 목록", **access(MVP, *STAFF_ADMIN))
+def list_invitations(
+    user: CurrentUserDep,
+    paging: Annotated[PageParams, Depends(page_params)],
+    role: Role | None = None,
+    status_: Annotated[InvitationStatus | None, Query(alias="status")] = None,
+    student_id: uuid.UUID | None = None,
+) -> Page[InvitationOut]:
     raise not_implemented()
 
 
-@classes_router.post("/{class_id}/students", summary="반에 학생 등록", **access(MVP, *STAFF_ADMIN))
-def enroll_students(user: CurrentUserDep, class_id: uuid.UUID, body: EnrollBody) -> ClassOut:
-    raise not_implemented()
-
-
-@classes_router.delete(
-    "/{class_id}/students/{student_id}",
-    summary="반에서 학생 빼기",
+@invitations_router.delete(
+    "/{invitation_id}",
+    summary="초대 코드 폐기",
     status_code=status.HTTP_204_NO_CONTENT,
     **access(MVP, *STAFF_ADMIN),
 )
-def unenroll_student(user: CurrentUserDep, class_id: uuid.UUID, student_id: uuid.UUID) -> None:
+def revoke_invitation(user: CurrentUserDep, invitation_id: uuid.UUID) -> None:
     raise not_implemented()
 
 
-routers = [academy_router, users_router, classes_router]
+routers = [academy_router, users_router, invitations_router]

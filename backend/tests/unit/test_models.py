@@ -50,7 +50,11 @@ def unique_sets(table_name):
         ("notice_candidates", {"academy_id", "dedupe_key"}),  # 같은 단계 안내 1회
         ("messages", {"idempotency_key"}),  # 대행사 재시도 중복 방지
         ("approvals", {"candidate_id"}),
-        ("attendance_records", {"student_id", "class_id", "date"}),
+        ("attendance_records", {"session_id", "student_id"}),  # 회차당 1건
+        ("invitations", {"code_hash"}),
+        ("community_reports", {"target_type", "target_id", "reporter_id"}),  # 1인 1신고
+        ("community_anon_numbers", {"post_id", "number"}),
+        ("users", {"student_id"}),
         ("household_suggestions", {"academy_id", "student_key"}),
         ("webhook_events", {"provider", "event_id"}),
         ("template_translations", {"template_version_id", "language"}),

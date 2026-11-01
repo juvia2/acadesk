@@ -16,7 +16,14 @@ from acadesk.main import create_app
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "docs" / "api"
 
-ROLE_KO = {"owner": "원장", "manager": "실장", "teacher": "교사"}
+ROLE_KO = {
+    "owner": "원장",
+    "manager": "실장",
+    "teacher": "교사",
+    "student": "학생",
+    "parent": "학부모",
+    "operator": "플랫폼 운영자",
+}
 METHOD_ORDER = ["get", "post", "put", "patch", "delete"]
 
 
@@ -144,7 +151,7 @@ def render(spec: dict[str, Any]) -> str:
         "# acadesk API 명세서",
         "",
         f"버전 {spec['info']['version']} · 엔드포인트 {len(ops_all)}개 "
-        f"(MVP {stage_count['MVP']} · 확장 {stage_count['확장']} · 제안 {stage_count['제안']})",
+        f"(MVP {stage_count['MVP']} · 2단계 {stage_count['2단계']} · 3단계 {stage_count['3단계']})",
         "",
         "> 이 문서는 `scripts/export_api_spec.py`가 백엔드 코드에서 자동으로 만든다. 직접 고치지 말고 "
         "라우터를 고친 뒤 다시 생성한다. 기계용 명세는 `docs/api/openapi.json`, "
@@ -159,8 +166,10 @@ def render(spec: dict[str, Any]) -> str:
         "`ACADESK_AUTH_DEV_BYPASS=true`로 개발용 원장 계정 사용 |",
         "| 학원 격리 | 토큰의 `academy_id`로 모든 조회·변경 범위를 제한한다. "
         "요청 본문으로 academy_id를 받지 않는다 |",
-        "| 역할 | 원장(owner) · 실장(manager) · 교사(teacher) |",
-        "| 단계 | **MVP** 첫 출시 · **확장** 이후 단계 · **제안** 회의에서 채택 여부 결정 |",
+        "| 역할 | 학원 관리자: 원장(owner)·실장(manager) · 교사(teacher) · 학생(student) · "
+        "학부모(parent) · 플랫폼 운영자(operator, 커뮤니티 신고 처리만) |",
+        "| 단계 | 기획안 v2 11장 출시 순서: **MVP** · **2단계**(커뮤니티·과제·수납 기록) · "
+        "**3단계**(미납 자동 안내·AI·번역) |",
         "| 목록 | `?page=1&size=20` (size 최대 100). 응답은 `{items, total, page, size}` |",
         "| 금액 | 정수(원) |",
         "| 시각 | ISO 8601, 날짜는 `YYYY-MM-DD` |",

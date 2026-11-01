@@ -11,6 +11,9 @@ from acadesk.db.base import Base, IdMixin, TenantMixin, TimestampMixin, str_enum
 from .schemas import (
     CandidateStatus,
     Channel,
+    EmergencyReason,
+    EmergencyStatus,
+    EmergencyTargetType,
     IntentSource,
     MessageStatus,
     NoticeKind,
@@ -120,6 +123,9 @@ class Message(IdMixin, TenantMixin, TimestampMixin, Base):
     # 대행사에 넘기는 멱등키. 재시도해도 1회만 나가게
     idempotency_key: Mapped[str] = mapped_column(String(64), unique=True)
     fallback_of: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("messages.id"))
+    emergency_message_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("emergency_messages.id"), index=True
+    )
     approved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id"))
 
 
@@ -132,6 +138,28 @@ class MessageCandidate(TenantMixin, Base):
     candidate_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("notice_candidates.id", ondelete="CASCADE"), primary_key=True
     )
+
+
+# ── 긴급 문자 ───────────────────────────────────────
+
+
+class EmergencyMessage(IdMixin, TenantMixin, TimestampMixin, Base):
+    """긴급 문자 1회 발송. 학부모별 문자는 messages(emergency_message_id)로 남는다."""
+
+    __tablename__ = "emergency_messages"
+
+    reason: Mapped[EmergencyReason] = mapped_column(str_enum(EmergencyReason, 16))
+    body: Mapped[str] = mapped_column(Text)
+    target_type: Mapped[EmergencyTargetType] = mapped_column(str_enum(EmergencyTargetType, 16))
+    target_lecture_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("lectures.id"))
+    target_student_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), default=list
+    )
+    sent_by: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"))
+    recipient_count: Mapped[int] = mapped_column(Integer, default=0)
+    delivered_count: Mapped[int] = mapped_column(Integer, default=0)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[EmergencyStatus] = mapped_column(str_enum(EmergencyStatus, 16))
 
 
 # ── 회신 ─────────────────────────────────────────────

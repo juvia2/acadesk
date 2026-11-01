@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 class HomeworkOut(BaseModel):
     id: uuid.UUID
-    class_id: uuid.UUID
+    lecture_id: uuid.UUID
     title: str
     due_date: date
     created_by: uuid.UUID
@@ -16,7 +16,7 @@ class HomeworkOut(BaseModel):
 
 
 class HomeworkCreate(BaseModel):
-    class_id: uuid.UUID
+    lecture_id: uuid.UUID
     title: str
     due_date: date
 

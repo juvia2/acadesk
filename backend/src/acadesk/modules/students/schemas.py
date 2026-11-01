@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from enum import StrEnum
 
 from pydantic import BaseModel, Field
@@ -61,11 +61,15 @@ class StudentSummary(BaseModel):
     grade: str | None = None
     status: StudentStatus
     household_id: uuid.UUID | None = None
-    class_ids: list[uuid.UUID] = []
+    lecture_ids: list[uuid.UUID] = []
 
 
 class StudentOut(StudentSummary):
     school: str | None = None
+    birth_date: date | None = Field(
+        None, description="만 14세 미만이면 학생 가입에 보호자 동의 필요"
+    )
+    has_account: bool = Field(False, description="학생이 초대 코드로 가입했는지")
     guardians: list[GuardianLink] = []
     sibling_ids: list[uuid.UUID] = Field([], description="같은 가구의 다른 학생")
     created_at: datetime
@@ -76,7 +80,8 @@ class StudentCreate(BaseModel):
     name: str
     grade: str | None = None
     school: str | None = None
-    class_ids: list[uuid.UUID] = []
+    birth_date: date | None = None
+    lecture_ids: list[uuid.UUID] = []
     guardians: list[GuardianLinkCreate] = []
 
 
@@ -85,6 +90,7 @@ class StudentUpdate(BaseModel):
     name: str | None = None
     grade: str | None = None
     school: str | None = None
+    birth_date: date | None = None
     status: StudentStatus | None = Field(
         None, description="휴원·퇴원으로 바꾸면 예약 안내가 보류된다"
     )

@@ -12,8 +12,8 @@ from .schemas import SubmissionStatus
 class Homework(IdMixin, TenantMixin, TimestampMixin, Base):
     __tablename__ = "homework"
 
-    class_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("classes.id", ondelete="CASCADE"), index=True
+    lecture_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("lectures.id", ondelete="CASCADE"), index=True
     )
     title: Mapped[str] = mapped_column(String(200))
     due_date: Mapped[date] = mapped_column(Date)

@@ -11,10 +11,10 @@ from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
 from acadesk.ai.schemas import AiRunStatus, AiTask
-from acadesk.api.deps import EXT, CurrentUserDep, access
+from acadesk.api.deps import STAGE3, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
-from acadesk.core.security import ALL_ROLES, STAFF_ADMIN
+from acadesk.core.security import STAFF, STAFF_ADMIN
 
 router = APIRouter(prefix="/ai", tags=["AI 보조"])
 
@@ -62,7 +62,7 @@ class FeedbackBody(BaseModel):
     "/replies/{reply_id}/classify",
     summary="회신 분류·후속 업무 제안",
     status_code=status.HTTP_202_ACCEPTED,
-    **access(EXT, *ALL_ROLES),
+    **access(STAGE3, *STAFF),
 )
 def classify_reply(user: CurrentUserDep, reply_id: uuid.UUID) -> AiRunOut:
     raise not_implemented()
@@ -73,7 +73,7 @@ def classify_reply(user: CurrentUserDep, reply_id: uuid.UUID) -> AiRunOut:
     summary="안내문 초안",
     description="자리 표시가 남은 문구를 만든다. 숫자·날짜는 코드가 채운다. 결과는 승인함으로 간다.",
     status_code=status.HTTP_202_ACCEPTED,
-    **access(EXT, *STAFF_ADMIN),
+    **access(STAGE3, *STAFF_ADMIN),
 )
 def draft(user: CurrentUserDep, candidate_id: uuid.UUID) -> AiRunOut:
     raise not_implemented()
@@ -83,7 +83,7 @@ def draft(user: CurrentUserDep, candidate_id: uuid.UUID) -> AiRunOut:
     "/students/{student_id}/summary",
     summary="상담 전 연락 이력 요약",
     status_code=status.HTTP_202_ACCEPTED,
-    **access(EXT, *ALL_ROLES),
+    **access(STAGE3, *STAFF),
 )
 def consult_summary(user: CurrentUserDep, student_id: uuid.UUID) -> AiRunOut:
     raise not_implemented()
@@ -94,13 +94,13 @@ def consult_summary(user: CurrentUserDep, student_id: uuid.UUID) -> AiRunOut:
     summary="수납·출결 불일치 후보 찾기",
     description="찾은 후보는 확인 필요함(ai_mismatch)에 올라간다.",
     status_code=status.HTTP_202_ACCEPTED,
-    **access(EXT, *STAFF_ADMIN),
+    **access(STAGE3, *STAFF_ADMIN),
 )
 def mismatch_scan(user: CurrentUserDep, body: MismatchScanBody) -> AiRunOut:
     raise not_implemented()
 
 
-@router.get("/runs", summary="AI 실행 기록", **access(EXT, *STAFF_ADMIN))
+@router.get("/runs", summary="AI 실행 기록", **access(STAGE3, *STAFF_ADMIN))
 def list_runs(
     user: CurrentUserDep,
     paging: Annotated[PageParams, Depends(page_params)],
@@ -109,12 +109,12 @@ def list_runs(
     raise not_implemented()
 
 
-@router.get("/runs/{run_id}", summary="AI 실행 결과", **access(EXT, *ALL_ROLES))
+@router.get("/runs/{run_id}", summary="AI 실행 결과", **access(STAGE3, *STAFF))
 def get_run(user: CurrentUserDep, run_id: uuid.UUID) -> AiRunOut:
     raise not_implemented()
 
 
-@router.get("/runs/{run_id}/steps", summary="AI 실행 단계별 기록", **access(EXT, *STAFF_ADMIN))
+@router.get("/runs/{run_id}/steps", summary="AI 실행 단계별 기록", **access(STAGE3, *STAFF_ADMIN))
 def list_steps(user: CurrentUserDep, run_id: uuid.UUID) -> list[AiStepOut]:
     raise not_implemented()
 
@@ -123,7 +123,7 @@ def list_steps(user: CurrentUserDep, run_id: uuid.UUID) -> list[AiStepOut]:
     "/runs/{run_id}/feedback",
     summary="AI 결과 채택·수정 기록",
     status_code=status.HTTP_204_NO_CONTENT,
-    **access(EXT, *ALL_ROLES),
+    **access(STAGE3, *STAFF),
 )
 def feedback(user: CurrentUserDep, run_id: uuid.UUID, body: FeedbackBody) -> None:
     raise not_implemented()

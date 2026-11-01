@@ -5,13 +5,17 @@ from pydantic import BaseModel
 
 
 class Role(StrEnum):
-    OWNER = "owner"  # 원장
-    MANAGER = "manager"  # 실장
-    TEACHER = "teacher"  # 교사
+    OWNER = "owner"  # 학원 관리자 (원장)
+    MANAGER = "manager"  # 학원 관리자 (실장)
+    TEACHER = "teacher"
+    STUDENT = "student"
+    PARENT = "parent"
+    OPERATOR = "operator"  # 플랫폼 운영자: 커뮤니티 신고 처리. 학원 데이터 권한 없음
 
 
-ALL_ROLES = (Role.OWNER, Role.MANAGER, Role.TEACHER)
-STAFF_ADMIN = (Role.OWNER, Role.MANAGER)
+STAFF_ADMIN = (Role.OWNER, Role.MANAGER)  # 학원 관리자
+STAFF = (Role.OWNER, Role.MANAGER, Role.TEACHER)  # 학원 직원
+MEMBERS = (*STAFF, Role.STUDENT, Role.PARENT)  # 학원 구성원 전체
 
 
 class CurrentUser(BaseModel):
@@ -21,6 +25,8 @@ class CurrentUser(BaseModel):
     academy_id: uuid.UUID
     role: Role
     name: str
+    student_id: uuid.UUID | None = None  # role=student: 연결된 학생 명부
+    guardian_id: uuid.UUID | None = None  # role=parent: 연결된 보호자 (자녀는 student_guardians)
 
 
 DEV_USER = CurrentUser(

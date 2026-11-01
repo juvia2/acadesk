@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, Form, Query, UploadFile, status
 
-from acadesk.api.deps import EXT, MVP, CurrentUserDep, access
+from acadesk.api.deps import MVP, STAGE3, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
 from acadesk.core.security import STAFF_ADMIN
@@ -54,7 +54,7 @@ def upload(
     "/sheets",
     summary="구글 시트에서 가져오기",
     status_code=status.HTTP_202_ACCEPTED,
-    **access(EXT, *STAFF_ADMIN),
+    **access(STAGE3, *STAFF_ADMIN),
 )
 def import_sheet(user: CurrentUserDep, body: SheetImportBody) -> ImportBatchOut:
     raise not_implemented()

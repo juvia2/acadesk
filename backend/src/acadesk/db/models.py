@@ -7,10 +7,15 @@ from acadesk.modules.approvals import models as approvals  # noqa: F401
 from acadesk.modules.attendance import models as attendance  # noqa: F401
 from acadesk.modules.audit import models as audit  # noqa: F401
 from acadesk.modules.billing import models as billing  # noqa: F401
+from acadesk.modules.community import models as community  # noqa: F401
 from acadesk.modules.documents import models as documents  # noqa: F401
 from acadesk.modules.homework import models as homework  # noqa: F401
 from acadesk.modules.imports import models as imports  # noqa: F401
+from acadesk.modules.lectures import models as lectures  # noqa: F401
 from acadesk.modules.messaging import models as messaging  # noqa: F401
+from acadesk.modules.notices import models as notices  # noqa: F401
+from acadesk.modules.notifications import models as notifications  # noqa: F401
+from acadesk.modules.questions import models as questions  # noqa: F401
 from acadesk.modules.rules import models as rules  # noqa: F401
 from acadesk.modules.students import models as students  # noqa: F401
 

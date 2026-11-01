@@ -1,6 +1,6 @@
 # acadesk — 학원 학부모 소통 자동화
 
-기획: [docs/planning/기획안.md](docs/planning/기획안.md)
+기획: [docs/planning/기획안_v2.md](docs/planning/기획안_v2.md) (이전: [기획안.md](docs/planning/기획안.md)) · 작업 기준: [HANDOFF.md](HANDOFF.md)
 
 ## 시작하기
 
@@ -48,14 +48,20 @@ acadesk/
 │   │   ├── core/                # 설정, 인증·RBAC, 로깅
 │   │   ├── db/                  # DB 세션, Base, pgvector 설정
 │   │   ├── modules/             # 업무 도메인 (각 폴더에 models/schemas/service/router)
-│   │   │   ├── academies/       # 학원·지점·테넌트
-│   │   │   ├── students/        # 학생·학부모·연락처
-│   │   │   ├── billing/         # 수납 (청구·납부·잔액)
-│   │   │   ├── attendance/      # 출결
+│   │   │   ├── academies/       # 학원·지점·계정·초대 코드
+│   │   │   ├── lectures/        # 강의·수강·강의 회차
+│   │   │   ├── students/        # 학생·보호자·형제(가구)
+│   │   │   ├── billing/         # 수납 기록 (2단계), 자동 안내 관련은 3단계
+│   │   │   ├── attendance/      # 강의별 QR 출결 (qr.py: 토큰·판정)
+│   │   │   ├── notices/         # 공지사항
+│   │   │   ├── questions/       # 질의응답·상담
+│   │   │   ├── notifications/   # 앱 알림·푸시 구독
+│   │   │   ├── reports/         # 학생 화면·학부모 자녀 리포트
+│   │   │   ├── community/       # 학부모 익명 커뮤니티 (2단계)
 │   │   │   ├── homework/        # 과제
-│   │   │   ├── rules/           # 규칙 엔진 (안내 후보 생성·중단 조건)
-│   │   │   ├── messaging/       # 템플릿, 안내 후보, 발송 이력, 회신
-│   │   │   ├── approvals/       # 담당자 검토·승인함
+│   │   │   ├── rules/           # 규칙 엔진 (3단계)
+│   │   │   ├── messaging/       # 긴급 문자, 발송 이력 / 템플릿·안내 후보·회신(3단계)
+│   │   │   ├── approvals/       # 승인함 (3단계)
 │   │   │   ├── imports/         # CSV/엑셀 업로드, 데이터 검증
 │   │   │   ├── documents/       # 수납 안내 PDF 생성
 │   │   │   └── audit/           # 감사 로그

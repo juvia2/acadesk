@@ -3,10 +3,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
 
-from acadesk.api.deps import EXT, MVP, CurrentUserDep, access
+from acadesk.api.deps import MVP, STAGE2, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
-from acadesk.core.security import ALL_ROLES, STAFF_ADMIN
+from acadesk.core.security import STAFF, STAFF_ADMIN
 
 from .schemas import (
     GuardianCreate,
@@ -41,13 +41,13 @@ Paging = Annotated[PageParams, Depends(page_params)]
 # ── 학생 ─────────────────────────────────────────────
 
 
-@students_router.get("", summary="학생 목록·검색", **access(MVP, *ALL_ROLES))
+@students_router.get("", summary="학생 목록·검색", **access(MVP, *STAFF))
 def list_students(
     user: CurrentUserDep,
     paging: Paging,
     q: str | None = None,
     status_: Annotated[StudentStatus | None, Query(alias="status")] = None,
-    class_id: uuid.UUID | None = None,
+    lecture_id: uuid.UUID | None = None,
     household_id: uuid.UUID | None = None,
 ) -> Page[StudentSummary]:
     raise not_implemented()
@@ -60,7 +60,7 @@ def create_student(user: CurrentUserDep, body: StudentCreate) -> StudentOut:
     raise not_implemented()
 
 
-@students_router.get("/{student_id}", summary="학생 상세", **access(MVP, *ALL_ROLES))
+@students_router.get("/{student_id}", summary="학생 상세", **access(MVP, *STAFF))
 def get_student(user: CurrentUserDep, student_id: uuid.UUID) -> StudentOut:
     raise not_implemented()
 
@@ -74,7 +74,7 @@ def update_student(user: CurrentUserDep, student_id: uuid.UUID, body: StudentUpd
     "/{student_id}/timeline",
     summary="학생별 기록",
     description="수납·출결·과제·발송·회신·승인·메모를 시간순으로 합쳐 보여준다.",
-    **access(MVP, *ALL_ROLES),
+    **access(MVP, *STAFF),
 )
 def get_timeline(
     user: CurrentUserDep,
@@ -89,7 +89,7 @@ def get_timeline(
     "/{student_id}/notes",
     summary="상담·통화 메모 추가",
     status_code=status.HTTP_201_CREATED,
-    **access(EXT, *ALL_ROLES),
+    **access(STAGE2, *STAFF),
 )
 def add_note(user: CurrentUserDep, student_id: uuid.UUID, body: NoteCreate) -> TimelineItem:
     raise not_implemented()
@@ -152,7 +152,7 @@ def create_guardian(user: CurrentUserDep, body: GuardianCreate) -> GuardianOut:
     raise not_implemented()
 
 
-@guardians_router.get("/{guardian_id}", summary="보호자 상세", **access(MVP, *ALL_ROLES))
+@guardians_router.get("/{guardian_id}", summary="보호자 상세", **access(MVP, *STAFF))
 def get_guardian(user: CurrentUserDep, guardian_id: uuid.UUID) -> GuardianOut:
     raise not_implemented()
 
@@ -225,7 +225,7 @@ def create_household(user: CurrentUserDep, body: HouseholdCreate) -> HouseholdOu
     raise not_implemented()
 
 
-@households_router.get("/{household_id}", summary="가구 상세", **access(MVP, *ALL_ROLES))
+@households_router.get("/{household_id}", summary="가구 상세", **access(MVP, *STAFF))
 def get_household(user: CurrentUserDep, household_id: uuid.UUID) -> HouseholdOut:
     raise not_implemented()
 

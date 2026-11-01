@@ -6,30 +6,42 @@ from acadesk.modules.approvals.router import routers as approvals
 from acadesk.modules.attendance.router import routers as attendance
 from acadesk.modules.audit.router import routers as audit
 from acadesk.modules.billing.router import routers as billing
+from acadesk.modules.community.router import routers as community
 from acadesk.modules.documents.router import routers as documents
 from acadesk.modules.homework.router import routers as homework
 from acadesk.modules.imports.router import routers as imports
+from acadesk.modules.lectures.router import routers as lectures
 from acadesk.modules.messaging.router import routers as messaging
+from acadesk.modules.notices.router import routers as notices
+from acadesk.modules.notifications.router import routers as notifications
+from acadesk.modules.questions.router import routers as questions
+from acadesk.modules.reports.router import routers as reports
 from acadesk.modules.rules.router import routers as rules
 from acadesk.modules.students.router import routers as students
 
 api_router = APIRouter()
 
-# 명세서와 Swagger에 나오는 순서
+# 명세서와 Swagger에 나오는 순서: MVP 화면 흐름 → 2단계 → 3단계 순
 for r in [
     auth.router,
     dashboard.router,
     *academies,
-    *students,
-    *imports,
-    *billing,
+    *lectures,
     *attendance,
+    *students,
+    *reports,
+    *notices,
+    *questions,
+    *notifications,
+    *messaging,
+    *imports,
+    *audit,
+    *community,
     *homework,
+    *billing,
     *rules,
     *approvals,
-    *messaging,
     *documents,
-    *audit,
     ai.router,
     webhooks.router,
     public.router,

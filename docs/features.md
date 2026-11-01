@@ -1,310 +1,237 @@
-# acadesk 기능 정리
+# acadesk 기능 정리 (v2)
 
-## 인증 / 권한 / 테넌트
+## 회원가입 / 초대 코드 / 역할별 화면
 
 `MVP` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/core/security.py
-- backend/src/acadesk/core/config.py
-- backend/src/acadesk/api/deps.py
 - backend/src/acadesk/api/v1/auth.py
+- backend/src/acadesk/modules/academies/ (invitations)
+- backend/src/acadesk/core/security.py
+- backend/src/acadesk/api/deps.py
 </aside>
 
 <aside>
-💡 기획 요구: 원장·실장·교사 권한 분리, 학원별 데이터 격리
+💡 기획 요구: 학원 관리자·교사·학생·학부모 4역할, 로그인하면 역할별 다른 화면, 아무나 학부모로 가입 못 하게
 </aside>
 
 <aside>
 ➡️
 
-- 로그인 사용자에서 academy_id와 역할을 꺼내는 의존성 하나를 모든 라우터가 쓰게 함
-- 단계별 승인 권한(3단계 수납 = 원장·실장)을 역할 검사 함수로 한 곳에 모음
+- 학원 관리자는 학원 등록과 함께 가입, 나머지는 일회용 초대 코드로 가입 (코드는 해시만 저장)
+- 명부 업로드 뒤 학생·학부모 코드 일괄 발급 → 안내문 인쇄
+- 만 14세 미만 학생은 학부모가 승인할 때까지 pending_guardian_consent
+- /auth/me의 home으로 첫 화면 결정 (/admin, /teacher, /student, /parent)
+- 엔드포인트마다 access(단계, *역할)로 권한을 한 곳에 적음
 </aside>
 
-## 기록 업로드 / 검증
+## 강의 / 강의 회차
 
-`MVP` · 담당: Olivia (제안)
+`MVP` · 담당: 미정
+
+<aside>
+📁
+
+- backend/src/acadesk/modules/lectures/
+- backend/src/acadesk/workers/ (주간 회차 생성)
+</aside>
+
+<aside>
+💡 기획 요구: 출결은 강의별, 시간표·휴강·보강
+</aside>
+
+<aside>
+➡️
+
+- 강의(시간표) → 강의 회차(날짜·시작·종료)를 워커가 매주 자동 생성
+- 휴강은 회차 status=cancelled + 학생·학부모 앱 알림
+- 보강은 회차 kind=makeup, 대상 학생만 session_students에
+</aside>
+
+## QR 강의별 출결
+
+`MVP` · 담당: 미정
+
+<aside>
+📁
+
+- backend/src/acadesk/modules/attendance/qr.py (구현 완료)
+- backend/src/acadesk/modules/attendance/router.py
+- frontend/src/app/teacher/sessions/[id]/qr/
+- frontend/src/app/student/scan/
+</aside>
+
+<aside>
+💡 기획 요구: 교사가 매일 다른 QR, 학생이 찍어 출석, 대리 출석 방지
+</aside>
+
+<aside>
+➡️
+
+- QR 토큰 = (회차 ID, 30초 구간) HMAC 서명. DB 저장 없음, 사진 공유해도 약 60초 뒤 무효
+- 체크인: 서명·시간 → 수강생 여부 → 출석 가능 시간(시작 15분 전~종료) → (회차, 학생) 유니크로 1회
+- 시작 10분 뒤부터 지각, 마감 때 미출석은 auto_absent + 학부모 푸시 + 결석 알림
+- 같은 device_id로 여러 학생이 찍으면 확인 필요함에 표시
+- 휴대전화 없는 학생은 교사가 수동 처리 (method=manual)
+</aside>
+
+## 학생 / 보호자 / 형제 연동
+
+`MVP` · 담당: 미정
+
+<aside>
+📁
+
+- backend/src/acadesk/modules/students/
+</aside>
+
+<aside>
+💡 기획 요구: 학부모 계정 하나에 자녀 여럿, 리포트 자녀 전환
+</aside>
+
+<aside>
+➡️
+
+- 가구(household)로 형제 묶음, 연결은 담당자 확인 후 확정
+- 학부모 계정 = 보호자 기록(guardian_id), 자녀는 student_guardians로
+- 둘째 자녀는 학부모 초대 코드를 추가 입력 (POST /children)
+- 연락처는 암호화 + 해시, 화면에는 마스킹
+</aside>
+
+## 명부 업로드
+
+`MVP` · 담당: 미정
 
 <aside>
 📁
 
 - backend/src/acadesk/modules/imports/
-- backend/src/acadesk/integrations/storage/
-- backend/src/acadesk/modules/imports/router.py
 </aside>
 
 <aside>
-💡 기획 요구: CSV·엑셀 입력, 기록 갱신이 늦거나 틀린 데이터로 오발송 방지
+💡 기획 요구: 학원 도입 시 학생·학부모 명단 일괄 등록
 </aside>
 
 <aside>
 ➡️
 
-- 업로드 1회 = import_batch 1건, 행마다 오류를 모아 '확인 필요함'으로 보냄 (전체 실패 X)
-- 원본 파일은 비공개 저장소에 두고 만료 정책 적용
-- 같은 파일 재업로드 시 중복 생성 안 되게 외부 키(학생번호+청구월 등)로 upsert
+- CSV·엑셀 → 열 매핑 → 행별 검사 → 반영 (오류 행만 확인 필요함으로)
+- 반영 뒤 형제 연결 후보 생성, 초대 코드 일괄 발급으로 이어짐
 </aside>
 
-## 학원 / 학생 / 학부모
+## 공지사항
 
-`MVP` · 담당: Olivia (제안)
+`MVP` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/modules/academies/
-- backend/src/acadesk/modules/students/
+- backend/src/acadesk/modules/notices/
 </aside>
 
 <aside>
-💡 기획 요구: 수신자 정보는 원본 데이터에서만, 연락처는 개인정보
+💡 기획 요구: 학생·학부모 화면의 공지
 </aside>
 
 <aside>
 ➡️
 
-- 모든 테이블에 academy_id 필수
-- 학생–보호자 1:N, 수신 동의와 기본 수신자 표시
-- 연락처 컬럼 암호화, 화면에는 마스킹
-- 보호자마다 수신 언어(preferred_language, 기본 ko)를 MVP부터 둠 → 다국어 안내 연결
+- 학원 전체 / 강의별, 대상 학생 / 학부모 / 둘 다
+- 고정, 첨부(files), 읽음 기록 → 관리자는 안 읽은 사람 확인
+- 새 공지는 앱 푸시, 문자는 쓰지 않음
 </aside>
 
-## 형제 연동
+## 질의응답 (상담)
 
-`MVP (연결·묶음 안내) · 확장 (할인·합산 수납)` · 담당: lshee9008 (제안)
+`MVP` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/modules/students/households.py
-- backend/src/acadesk/modules/imports/ (형제 연결 후보)
-- backend/src/acadesk/modules/billing/discounts.py
-- backend/src/acadesk/modules/billing/allocation.py
-- backend/src/acadesk/workers/send.py (발송 전 묶기 단계)
-- frontend/src/app/students/[id]/ (형제 표시)
-- frontend/src/app/review/ (연결 후보 확인)
+- backend/src/acadesk/modules/questions/
 </aside>
 
 <aside>
-💡 기획 요구: 학생–보호자 1:N, 학부모 1인당 하루 발송 상한, 입금자명 불일치 보류. 형제가 같이 다니는 학원이 많아 안내·수납이 학생 단위로 흩어짐
+💡 기획 요구: 학생이 선생님과 상담, 학부모 상담
 </aside>
 
 <aside>
 ➡️
 
-- 가구(household) 테이블로 형제를 묶음. 학생은 household_id를 가지고, 보호자는 학생–보호자 연결로 공유
-- 연결은 자동 확정하지 않음: 업로드 때 같은 보호자 연락처가 여러 학생에 있으면 '형제로 연결할까요?' 후보 → 담당자 확인. 연결·해제는 감사 로그에 기록
-- 묶음 안내 (MVP): 같은 보호자에게 같은 날 가는 안내를 한 통으로 합침. 각 건의 발송 직전 재검증은 따로 하고, 취소된 줄만 빼고 발송
-- 입금자명 매칭: 가구 단위로 찾음 (형 이름으로 동생 학원비를 내는 경우)
-- 합산 수납 (확장): 한 번 입금으로 형제 청구서 여러 건을 낼 때 오래된 청구부터 나눠 반영. 금액이 딱 맞지 않으면 보류하고 담당자가 배분
-- 형제 할인 (확장): 학원별 규칙(예: 둘째 10%)을 청구 생성 때 할인 줄로 기록. 형제가 퇴원·휴원하면 할인 재계산 후보를 만들고 담당자가 확인
-- 형제가 같은 날 함께 결석하면 결석 확인 알림을 한 건으로 (가족 일정일 가능성)
-- 학생 화면·상담 전 요약에 형제 목록과 가구 전체 수납 상태를 표시
-- 개인정보: 보호자가 다른 형제(재혼·조부모 양육 등)는 자동 연결하지 않음. 한 보호자에게는 그 보호자와 연결된 학생 정보만 보냄
+- 질문 1개 = 스레드. 강의를 고르면 그 교사에게, 아니면 관리자에게 배정
+- 학생–교사 스레드는 학부모에게 비공개
+- 교사가 답하면 answered, 질문자가 다시 쓰면 open. 안 읽은 수는 question_reads로
 </aside>
 
-## 수납
+## 학부모 리포트 / 학생 화면
 
-`MVP` · 담당: Olivia (제안)
+`MVP` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/modules/billing/
+- backend/src/acadesk/modules/reports/
+- frontend/src/app/parent/
+- frontend/src/app/student/
 </aside>
 
 <aside>
-💡 기획 요구: 잔액 = 청구 − 납부 − 할인, 부분 납부·분납·환불·이의 시 자동 발송 보류
+💡 기획 요구: 자녀의 강의별 출결, 등원 확인, 시간표, 공지 (과제·수납은 2단계)
 </aside>
 
 <aside>
 ➡️
 
-- 금액은 정수(원), 잔액은 저장하지 않고 계산하거나 납부 반영 시 함께 갱신
-- 보류 사유를 enum 플래그로 저장해 규칙 엔진이 읽게 함
-- 납부가 확인되면 예약된 후속 안내 취소 이벤트 발행
+- 읽기 전용 모음 API. 출결 기록·회차·공지·긴급 문자를 기간(주·월)으로 합침
+- QR 찍은 시각을 "실제 도착 시각"으로 보여줌
+- 과제·수납 항목은 해당 기능을 켠 학원만 채움
 </aside>
 
-## 출결
+## 앱 알림
 
-`MVP` · 담당: Olivia (제안)
+`MVP` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/modules/attendance/
+- backend/src/acadesk/modules/notifications/
+- frontend/public/sw.js (Web Push)
 </aside>
 
 <aside>
-💡 기획 요구: 지각·결석·보강·사전 신고 구분, 입력 지연 가능성
+💡 기획 요구: 일반 알림은 앱 푸시, 문자는 긴급할 때만
 </aside>
 
 <aside>
 ➡️
 
-- 상태 enum + 입력 시각(recorded_at) 저장 → 수업 시작 후 몇 분 지났는지로 '입력 지연' 판단
-- 당일 무단결석은 예약 발송 말고 담당자 즉시 알림으로 분기
+- PWA Web Push 구독을 기기별로 저장, 알림함(notifications)에 같이 기록
+- 종류별 끄기와 방해 금지 시간. 긴급은 끌 수 없음
 </aside>
 
-## 과제
+## 긴급 문자
 
-`확장` · 담당: Olivia (제안)
+`MVP` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/modules/homework/
+- backend/src/acadesk/modules/messaging/ (emergency_messages)
+- backend/src/acadesk/integrations/sms/
 </aside>
 
 <aside>
-💡 기획 요구: 1회 미완료는 내부 기록, 반복 시에만 안내 후보
-</aside>
-
-<aside>
-➡️
-
-- 과제(마감일)와 제출 기록을 분리
-- 반복 판단은 규칙 엔진에서, 과제 모듈은 사실만 기록
-</aside>
-
-## 규칙 엔진
-
-`MVP` · 담당: lshee9008 (제안)
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/rules/engine.py
-- backend/src/acadesk/modules/rules/policies/
-- backend/src/acadesk/modules/rules/settings.py
-</aside>
-
-<aside>
-💡 기획 요구: 상황별 발송 조건·중단 조건, 학원별로 기준 조정
+💡 기획 요구: 정말 긴급할 때만 학부모에게 SMS
 </aside>
 
 <aside>
 ➡️
 
-- 사실을 넣으면 후보 목록이 나오는 순수 함수로 작성 → DB 없이 테스트
-- 기준값(2주 3회 등)은 코드 상수가 아니라 학원별 설정 테이블
-- 후보마다 dedupe_key(예: invoice_id+단계)를 유니크로 → 같은 단계 1회만
-</aside>
-
-## 메시지 / 템플릿 / 이력
-
-`MVP` · 담당: lshee9008 (제안)
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/messaging/
-</aside>
-
-<aside>
-💡 기획 요구: 승인된 템플릿과 변수 치환, 하루 발송 상한, 회신 시 후속 중단
-</aside>
-
-<aside>
-➡️
-
-- 템플릿은 버전 관리, 발송 건에 사용한 버전 기록
-- 변수 치환은 코드가 DB 값으로 수행 (AI가 숫자를 쓰지 않음)
-- 회신·정정·상담 중 상태가 생기면 같은 사유 후보를 일괄 중단
-</aside>
-
-## 담당자 승인함
-
-`MVP` · 담당: lshee9008 (제안)
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/approvals/
-- backend/src/acadesk/modules/approvals/router.py
-</aside>
-
-<aside>
-💡 기획 요구: 수신자·사실·근거 확인 후 수정·보류·승인
-</aside>
-
-<aside>
-➡️
-
-- 상태: 대기 → 승인 / 수정 후 승인 / 보류 / 반려
-- 승인 시점의 사실(금액·날짜)을 스냅샷으로 저장 → 발송 직전 비교 기준
-- 누가 무엇을 바꿨는지 audit에 기록
-</aside>
-
-## 예약 / 발송 워커
-
-`MVP` · 담당: lshee9008 (제안)
-
-<aside>
-📁
-
-- backend/src/acadesk/workers/celery_app.py
-- backend/src/acadesk/workers/schedule.py
-- backend/src/acadesk/workers/send.py
-</aside>
-
-<aside>
-💡 기획 요구: 발송 직전 최신 상태 재검증, 재시도, 중복 방지
-</aside>
-
-<aside>
-➡️
-
-- 매일 정해진 시각에 후보 생성 작업 실행 (Celery beat)
-- 발송 직전 DB 재조회 → 잔액 0 또는 보류 사유가 생기면 취소
-- 발송 건 ID를 멱등키로 대행사에 전달, 재시도해도 1회만 나가게
-</aside>
-
-## 문자 / 알림톡 연동
-
-`MVP` · 담당: lshee9008 (제안)
-
-<aside>
-📁
-
-- backend/src/acadesk/integrations/sms/base.py
-- backend/src/acadesk/integrations/sms/mock.py
-- backend/src/acadesk/api/v1/webhooks.py
-</aside>
-
-<aside>
-💡 기획 요구: 발송 결과·회신 웹훅, 채널별 템플릿 심사
-</aside>
-
-<aside>
-➡️
-
-- 어댑터 인터페이스 + 모의 구현 먼저 → 대행사 정해지면 구현체만 추가
-- 웹훅은 서명 검증 후 발송 이력 상태 갱신
-</aside>
-
-## 수납 안내 PDF
-
-`확장` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/documents/
-</aside>
-
-<aside>
-💡 기획 요구: 3단계 승인 후에만 생성, 접근 제한 링크
-</aside>
-
-<aside>
-➡️
-
-- 승인 스냅샷 값으로 생성 (생성 시점 DB 값 X)
-- 비공개 저장 + 만료되는 링크
+- 미리 보기(인원·번역·한도) → preview_token → 발송. 미리 보기 없이 못 보냄
+- 교사는 자기 강의 학부모만, 학원 전체는 관리자만, 하루 한도
+- 학부모별 문자는 messages에 남기고 대행사 멱등키로 중복 방지
 </aside>
 
 ## 감사 로그
@@ -318,340 +245,123 @@
 </aside>
 
 <aside>
-💡 기획 요구: 연락 이력 인수인계, 오발송 추적
+💡 기획 요구: 출결 정정, 긴급 문자, 계정 승인, 커뮤니티 제재 기록
 </aside>
 
 <aside>
 ➡️
 
-- 추가만 가능한 테이블 (수정·삭제 없음)
-- 누가 / 언제 / 무엇을 / 이전 값 → 이후 값
+- 추가만 가능. UPDATE·DELETE는 DB 트리거가 막음
 </aside>
 
-## AI 에이전트
+## 학부모 익명 커뮤니티
 
-`확장` · 담당: lshee9008
+`2단계` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/ai/orchestrator/
-- backend/src/acadesk/ai/tools/
-- backend/src/acadesk/workers/ (AI 작업)
+- backend/src/acadesk/modules/community/
+- frontend/src/app/parent/community/
 </aside>
 
 <aside>
-💡 기획 요구: 제한된 에이전트, 허용 도구만, 단계별 기록. 회신 분류·후속 업무 제안, 안내문 초안, 상담 전 연락 이력 요약, 수납·출결 불일치 후보 (HANDOFF)
+💡 기획 요구: 같은 학원 학부모끼리 블라인드·당근처럼 익명(공개/비공개) 커뮤니티
 </aside>
 
 <aside>
 ➡️
 
-- 상태 흐름: 사실 조회 → 검색 → 초안 → 검증 → 승인함
-- 작업 4종을 같은 흐름 위에 둠: 회신 분류, 안내문 초안, 상담 전 요약, 불일치 후보
-- 결과는 모두 '확인 후보'로 저장하고 근거 기록 ID와 검토 상태를 함께 남김 (AI가 확정·발송하지 않음)
-- 도구는 읽기 전용, academy_id는 상태에서 자동 주입
-- ai_runs / ai_steps 테이블에 단계별 기록, 담당자 수정률을 지표로 남김
+- 인증 학부모만. 글마다 익명/닉네임, 학원 전체/학년/강의 범위
+- 응답에 작성자 ID를 넣지 않음 (is_mine만). 익명 댓글은 글마다 익명1, 익명2
+- 소속 표시("중2 학부모")는 그룹 5명 이상일 때만
+- 학원 직원은 글을 못 봄. 건의 게시판 글과 숫자 통계만
+- 전화번호·실명 자동 가림, 신고 3건 임시 블라인드 → 운영자(operator) 검토, 제재는 실제 계정에
 </aside>
 
-## LLM / 프롬프트
+## 과제
 
-`확장` · 담당: Olivia
+`2단계` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/ai/prompts/
-- backend/src/acadesk/ai/llm.py
-- backend/src/acadesk/ai/orchestrator/validators.py
+- backend/src/acadesk/modules/homework/
 </aside>
 
 <aside>
-💡 기획 요구: AI는 사실을 정중한 문장으로 다듬기만, 민감 사유 추론 금지
+💡 기획 요구: 리포트의 과제 제출률·미제출 목록
 </aside>
 
 <aside>
 ➡️
 
-- 프롬프트 파일마다 입력 변수와 출력 스키마를 함께 둠
-- 검증: 자리 표시가 아닌 숫자·날짜, 금지어, 홍보 문구
-- 평가 데이터셋으로 프롬프트 버전 비교
+- 강의별 과제와 학생별 제출 기록
 </aside>
 
-## 다국어 안내 / 번역
+## 수납 기록
 
-`확장` · 담당: Olivia (번역 프롬프트·검증), lshee9008 (발송 흐름)
+`2단계` · 담당: 미정
 
 <aside>
 📁
 
-- backend/src/acadesk/modules/students/ (preferred_language)
-- backend/src/acadesk/modules/messaging/translations.py
-- backend/src/acadesk/ai/prompts/translate/
-- backend/src/acadesk/ai/orchestrator/validators.py
-- frontend/src/i18n/ (강사용 화면 문구)
+- backend/src/acadesk/modules/billing/ (invoices, payments)
 </aside>
 
 <aside>
-💡 기획 요구: 외국인·다문화 가정 학부모와 외국인 강사. 영어 먼저 (2026-10-30 합의)
+💡 기획 요구: 리포트에서 이번 달 청구·납부·남은 금액, 형제 합산
 </aside>
 
 <aside>
 ➡️
 
-- 번역 단위는 발송 건이 아니라 '승인된 템플릿 버전 × 언어'. 한 번 번역하고 담당자가 확인하면 재사용 → 비용과 오역 위험 감소
-- {amount} 같은 자리 표시는 번역하지 않고 그대로 두고, 값은 코드가 채움. 날짜·금액 형식만 언어별로 바꿈
-- 검증: 자리 표시 개수·이름이 원문과 같은지, 원문에 없는 숫자가 생기지 않았는지
-- 기본 발송은 번역문 + 한국어 원문 함께 (학원이 정확한 원문을 증명할 수 있게)
-- 학부모 회신은 원문을 저장하고 한국어 번역을 승인함·학생 기록에 같이 표시
-- 알림톡은 언어별 템플릿 심사가 필요한지 확인 필요
+- 금액은 정수(원), 납부는 여러 청구(형제)에 나눠 반영
+- 자동 독촉은 3단계
 </aside>
 
-## RAG 검색
+## 미납 자동 안내 (보류)
 
-`확장` · 담당: lshee9008
+`3단계` · 담당: lshee9008 (제안)
 
 <aside>
 📁
 
-- backend/src/acadesk/ai/rag/ingest.py
-- backend/src/acadesk/ai/rag/retrieve.py
-</aside>
-
-<aside>
-💡 기획 요구: 학원 승인 템플릿·운영 규정·권한 있는 연락 이력만 근거로
-</aside>
-
-<aside>
-➡️
-
-- pgvector, 검색은 academy_id 필터가 강제된 함수 하나만 공개
-- 근거 조각 ID를 초안과 함께 저장 → 승인함에 출처 표시
-</aside>
-
-## 담당자 웹 화면
-
-`MVP` · 담당: Olivia (제안)
-
-<aside>
-📁
-
-- frontend/src/app/today/
-- frontend/src/app/approvals/
-- frontend/src/app/review/
-- frontend/src/app/students/[id]/
-- frontend/src/app/settings/
-</aside>
-
-<aside>
-💡 기획 요구: 오늘의 소통함, 승인함, 확인 필요함, 학생별 기록, 운영 설정
-</aside>
-
-<aside>
-➡️
-
-- API 타입은 FastAPI OpenAPI에서 자동 생성
-- 승인 화면에 사실·근거·문구를 나란히 보여줌
-- MVP 화면: 오늘의 소통함, 승인함, 확인 필요함, 업로드
-</aside>
-
-# 제안 기능 (회의에서 MVP / 확장 / 보류 결정)
-
-## 학부모 원클릭 응답
-
-`제안 · MVP 추천` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/messaging/replies.py
-- backend/src/acadesk/api/v1/public.py
-- frontend/src/app/r/[token]/
-</aside>
-
-<aside>
-💡 기획 요구: 회신·정정이 오면 후속 발송 중단. 자유 문장 회신은 분류가 틀릴 수 있음
-</aside>
-
-<aside>
-➡️
-
-- 안내 끝에 버튼 링크: "이미 납부했어요" / "미리 알렸어요" / "상담 원해요"
-- 누르면 AI 분류 없이 정확한 의도가 기록되고, 같은 사유 후속 발송 즉시 중단 + 담당자 확인 작업 생성
-- 링크는 발송 건별 일회용 토큰, 로그인 없음, 개인정보 표시 없음
-</aside>
-
-## 입금자명 매칭 보조
-
-`제안 · MVP 추천` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/billing/matching.py
-- backend/src/acadesk/modules/imports/
-</aside>
-
-<aside>
-💡 기획 요구: 입금자명 불일치는 자동 발송 보류 조건. 미납이 아닌데 미납 안내가 나가는 게 가장 큰 오발송
-</aside>
-
-<aside>
-➡️
-
-- 통장 입금 내역 CSV 업로드 → 보호자 이름·형제·금액·날짜로 학생 매칭 후보 제시
-- 확실하지 않으면 '확인 필요함'으로, 담당자가 한 번 연결하면 다음 달부터 자동 매칭
-</aside>
-
-## 휴원·방학 캘린더
-
-`제안 · MVP 추천` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/academies/calendar.py
 - backend/src/acadesk/modules/rules/
-</aside>
-
-<aside>
-💡 기획 요구: 휴원·퇴원 시 보류, 학원별 기준 조정
-</aside>
-
-<aside>
-➡️
-
-- 학원 휴무일·방학·공휴일과 학생별 휴원 기간을 등록
-- 쉬는 날엔 결석 후보를 만들지 않음, 수납 단계(+1/+3/+7일)는 영업일 기준 옵션
-</aside>
-
-## 납부 약속 추적
-
-`제안 · 확장` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/billing/promises.py
-- backend/src/acadesk/modules/rules/
-</aside>
-
-<aside>
-💡 기획 요구: 분납 약속이 있으면 자동 발송 보류
-</aside>
-
-<aside>
-➡️
-
-- "25일에 낼게요" 같은 회신을 담당자가 약속으로 등록 (AI는 날짜 후보만 제안)
-- 약속일까지 수납 안내 보류, 약속일 다음 날 납부 확인 후보 생성
-</aside>
-
-## 긴급 알림 에스컬레이션
-
-`제안 · 확장` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/workers/
-- backend/src/acadesk/modules/attendance/
-</aside>
-
-<aside>
-💡 기획 요구: 당일 무단결석은 담당자 즉시 알림
-</aside>
-
-<aside>
-➡️
-
-- 담당 교사가 N분 안에 확인하지 않으면 실장·원장에게 다시 알림
-- 확인한 사람과 시각을 감사 로그에 기록
-</aside>
-
-## 오발송 정정 안내
-
-`제안 · 확장` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/modules/messaging/
 - backend/src/acadesk/modules/approvals/
+- backend/src/acadesk/modules/messaging/ (templates, candidates, replies)
+- backend/src/acadesk/modules/documents/
 </aside>
 
 <aside>
-💡 기획 요구: 정정 요청 처리, 오발송 추적
+💡 기획 요구: v1 기획의 단계별 미납 안내, 승인함 (2026-11-01 3단계로 미룸)
 </aside>
 
 <aside>
 ➡️
 
-- 발송 이력에서 건을 고르면 정정 안내 초안 + 같은 사유 후속 중단 + 원인 기록을 한 번에
-- 정정 안내도 승인함을 거침
+- API·DB는 v1 설계 그대로 남겨 둠 (3단계 표시)
+- 입금자명 매칭·납부 약속·형제 할인도 3단계
 </aside>
 
-## 담당자 아침 브리핑
+## AI 보조
 
-`제안 · 확장` · 담당: 미정
+`3단계` · 담당: lshee9008 (에이전트), Olivia (LLM·프롬프트)
 
 <aside>
 📁
 
-- frontend/src/app/today/
-- backend/src/acadesk/ai/ (회신 요약, 선택)
+- backend/src/acadesk/ai/
+- backend/src/acadesk/api/v1/ai.py
 </aside>
 
 <aside>
-💡 기획 요구: 담당자 처리 시간 절감
-</aside>
-
-<aside>
-➡️
-
-- 오늘 승인할 것, 보류된 이유, 어제 들어온 회신, 확인 필요한 업로드 오류를 한 화면으로
-- 처음엔 숫자·목록만, AI 요약은 나중에 추가
-</aside>
-
-## 쉬운 한국어 모드
-
-`제안 · 확장` · 담당: Olivia (제안)
-
-<aside>
-📁
-
-- backend/src/acadesk/ai/prompts/translate/
-</aside>
-
-<aside>
-💡 기획 요구: 한국어가 서툰 보호자 (다국어 안내와 같은 대상)
+💡 기획 요구: 월간 리포트 요약, 커뮤니티 위험 글 검토 보조, 다국어 번역
 </aside>
 
 <aside>
 ➡️
 
-- 번역과 같은 흐름에서 언어 코드만 ko-easy로: 짧은 문장, 어려운 한자어 대신 쉬운 말
-- 템플릿 단위로 만들고 담당자 확인 후 재사용
-</aside>
-
-## 알림톡 실패 시 문자 대체
-
-`제안 · 확장` · 담당: 미정
-
-<aside>
-📁
-
-- backend/src/acadesk/integrations/sms/
-- backend/src/acadesk/api/v1/webhooks.py
-</aside>
-
-<aside>
-💡 기획 요구: 발송 결과 웹훅, 채널별 템플릿
-</aside>
-
-<aside>
-➡️
-
-- 알림톡 실패 웹훅을 받으면 같은 내용을 문자로 1회 재발송 (멱등키는 원래 발송 건 기준)
-- 대체 발송 여부를 이력에 표시
+- 결과는 모두 확인 후보. 요약은 교사 확인 뒤 공개, 커뮤니티 삭제는 운영자가 결정
+- 번역은 템플릿·공지 단위로 한 번, 숫자·날짜 칸은 코드가 채움
 </aside>

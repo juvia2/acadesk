@@ -4,7 +4,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Body, Depends, status
 
-from acadesk.api.deps import MVP, access, verify_webhook_signature
+from acadesk.api.deps import MVP, STAGE3, access, verify_webhook_signature
 from acadesk.core.errors import not_implemented
 
 router = APIRouter(
@@ -31,7 +31,7 @@ def delivery(provider: str, payload: Annotated[dict[str, Any], Body()]) -> None:
     summary="학부모 회신 수신",
     description="회신을 저장하고 원래 발송 건과 연결한다. 외국어면 번역을, AI가 켜져 있으면 분류를 요청한다.",
     status_code=status.HTTP_204_NO_CONTENT,
-    **access(MVP),
+    **access(STAGE3),
 )
 def inbound(provider: str, payload: Annotated[dict[str, Any], Body()]) -> None:
     raise not_implemented()

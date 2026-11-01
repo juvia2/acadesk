@@ -12,10 +12,11 @@ from fastapi import Depends, Header, HTTPException, Request, status
 from acadesk.core.config import get_settings
 from acadesk.core.security import DEV_USER, CurrentUser, Role, decode_access_token
 
-Stage = Literal["MVP", "확장", "제안"]
+# 기획안 v2 11장 출시 순서
+Stage = Literal["MVP", "2단계", "3단계"]
 MVP: Stage = "MVP"
-EXT: Stage = "확장"
-PROPOSED: Stage = "제안"  # features.md "제안 기능": 회의에서 MVP/확장/보류를 정함
+STAGE2: Stage = "2단계"
+STAGE3: Stage = "3단계"
 
 
 def get_current_user(authorization: Annotated[str | None, Header()] = None) -> CurrentUser:

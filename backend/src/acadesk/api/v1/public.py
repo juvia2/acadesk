@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path
 from pydantic import BaseModel, Field
 
-from acadesk.api.deps import PROPOSED, access
+from acadesk.api.deps import STAGE3, access
 from acadesk.core.errors import not_implemented
 from acadesk.modules.messaging.schemas import ReplyIntent
 
@@ -38,7 +38,7 @@ class PublicReplyResult(BaseModel):
     thank_you: str
 
 
-@router.get("/replies/{token}", summary="원클릭 응답 화면 정보", **access(PROPOSED))
+@router.get("/replies/{token}", summary="원클릭 응답 화면 정보", **access(STAGE3))
 def get_reply_page(token: Token) -> PublicReplyPage:
     raise not_implemented()
 
@@ -47,7 +47,7 @@ def get_reply_page(token: Token) -> PublicReplyPage:
     "/replies/{token}",
     summary="원클릭 응답 제출",
     description="AI 분류 없이 의도가 기록되고, 같은 사유 후속 안내가 바로 멈추며 담당자 확인 작업이 생긴다.",
-    **access(PROPOSED),
+    **access(STAGE3),
 )
 def submit_reply(token: Token, body: PublicReplyBody) -> PublicReplyResult:
     raise not_implemented()
