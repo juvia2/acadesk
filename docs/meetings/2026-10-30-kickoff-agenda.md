@@ -121,8 +121,8 @@
 
 - [ ] 저장소 Collaborator 초대, 기본 브랜치 `dev`로 변경, `main` 보호 규칙 설정
 - [ ] GitHub Projects 보드 만들고 MVP 이슈 쪼개기
-- [ ] `infra/docker`에 docker-compose 추가 (Postgres + pgvector, Redis)
-- [ ] Alembic 초기 설정과 공통 Base 모델
+- [x] `infra/docker`에 docker-compose 추가 (Postgres + pgvector, Redis)
+- [x] Alembic 초기 설정과 공통 Base 모델
 - [ ] 데이터 모델 관계도 초안 (`docs/adr/`)
 - [ ] 가상 샘플 데이터 생성 스크립트
 - [ ] 문자·알림톡 발송 대행사 비교 조사

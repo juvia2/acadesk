@@ -1,0 +1,36 @@
+# 로컬 개발용 DB·Redis.
+#   docker compose -f infra/docker/docker-compose.yml up -d
+# 로컬에 설치된 Postgres(5432)·Redis(6379)와 겹치지 않게 5433, 6380을 쓴다.
+# 접속 정보는 backend/src/acadesk/core/config.py 기본값과 같다. 운영 비밀번호로 쓰지 말 것.
+
+name: acadesk
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: acadesk
+      POSTGRES_PASSWORD: acadesk
+      POSTGRES_DB: acadesk
+    ports:
+      - "5433:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U acadesk -d acadesk"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  db-data:

@@ -5,34 +5,18 @@ AI는 사실을 만들거나 발송을 결정하지 않는다. 번역 요청은 
 
 import uuid
 from datetime import datetime
-from enum import StrEnum
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, status
 from pydantic import BaseModel, Field
 
+from acadesk.ai.schemas import AiRunStatus, AiTask
 from acadesk.api.deps import EXT, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
 from acadesk.core.security import ALL_ROLES, STAFF_ADMIN
 
 router = APIRouter(prefix="/ai", tags=["AI 보조"])
-
-
-class AiTask(StrEnum):
-    REPLY_CLASSIFICATION = "reply_classification"
-    DRAFT = "draft"
-    CONSULT_SUMMARY = "consult_summary"
-    MISMATCH_DETECTION = "mismatch_detection"
-    TRANSLATION = "translation"
-
-
-class AiRunStatus(StrEnum):
-    QUEUED = "queued"
-    RUNNING = "running"
-    SUCCEEDED = "succeeded"
-    NEEDS_REVIEW = "needs_review"  # 검증 실패 → 사람에게
-    FAILED = "failed"
 
 
 class AiRunOut(BaseModel):

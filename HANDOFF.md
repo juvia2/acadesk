@@ -112,11 +112,15 @@ Git 저장소: `juvia2/acadesk` (`main`, `dev`, 작업 브랜치 `ju`). 아래 *
   - **API 계약 132개 (MVP 95 · 확장 23 · 제안 13)**: 모듈마다 `schemas.py`(요청·응답)와 `router.py`. 인증·역할 검사는 동작하고, 본문은 모두 501(미구현)을 돌려준다. 서비스·DB 모델은 아직 없다.
   - 엔드포인트마다 `access(단계, *역할)`로 출시 단계와 허용 역할을 적는다 (`api/deps.py`).
   - 명세서: `docs/api/endpoints.md`(+PDF), `docs/api/openapi.json`. `scripts/export_api_spec.py`로 코드에서 생성.
+  - **DB 모델 46개 테이블** (모듈마다 `models.py`, 목록은 `db/models.py`). 학원·웹훅 원문을 뺀 모든 테이블에 `academy_id`. 학원 격리 조회는 `db/tenant.py`의 `scoped()`.
+  - Alembic 초기 마이그레이션 1개. 감사 로그 수정·삭제는 DB 트리거가 막는다.
+  - 로컬 DB·Redis: `infra/docker/docker-compose.yml` (Postgres 17 + pgvector, 포트 5433 / Redis 6380).
 - `frontend/`: Next.js 16 (App Router, TypeScript, Tailwind) 기본 앱. 빌드 확인함.
-- 없음: 데이터베이스 모델·마이그레이션, docker-compose, CI, 실제 외부 연동.
+- 없음: 서비스 로직(라우터가 아직 DB를 안 씀), 연락처 암호화 구현, RAG 테이블(임베딩 모델 결정 후), CI, 실제 외부 연동.
 
 ## 최근 변경과 검증
 
+- 2026-11-01 (lshee9008, `lsh` 브랜치): DB 모델 46개 테이블, Alembic 초기 마이그레이션, docker-compose 추가. 검증: `pytest` 76개 통과 (모델 규칙 + 실제 Postgres에 마이그레이션 적용·되돌리기, 감사 로그 트리거, enum CHECK), `alembic check`로 모델과 마이그레이션 일치 확인.
 - 2026-11-01 (lshee9008, `lsh` 브랜치): 전체 API 엔드포인트 설계와 라우터·스키마 코드 작성, API 명세서 생성. ruff는 줄 길이를 formatter에 맡기도록 E501 제외. 검증: `pytest` 16개 통과(인증·역할·경로 충돌·입력 검증), `ruff check`·`ruff format --check` 통과.
 - 2026-10-31 (lshee9008, `lsh` 브랜치): `docs/features.md`에 "형제 연동" 기능 추가. 기존 제안 "형제 묶음 안내"를 여기에 합침. 킥오프 안건에 형제 할인 범위 안건 추가. 문서 변경이라 실행 테스트는 없음.
 - 2026-10-30 (lshee9008): uv·Next.js 뼈대를 만들고 GitHub에 올림. `docs/features.md`(기능 정리)와 킥오프 안건을 추가. 연주의 `HANDOFF.md`를 루트에 합치고 구현 상태, 역할 분담, 다국어 안내 결정, 저장소에 없는 기획 문서 목록을 반영. 검증: 프론트 `npm run build`, 백엔드 `ruff check`, 패키지 import 통과.

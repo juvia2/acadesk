@@ -5,9 +5,13 @@
 ## 시작하기
 
 ```bash
+# 로컬 DB·Redis (Docker). Postgres 5433, Redis 6380
+docker compose -f infra/docker/docker-compose.yml up -d
+
 # 백엔드 (Python 3.12, uv)
 cd backend
 uv sync                      # .venv 생성 + 의존성 설치 (uv.lock 기준)
+uv run alembic upgrade head  # DB 테이블 생성·갱신
 uv run ruff check .          # 린트
 uv run pytest                # 테스트
 ACADESK_AUTH_DEV_BYPASS=true uv run uvicorn acadesk.main:app --reload
@@ -22,6 +26,15 @@ npm run dev                  # http://localhost:3000
 ```
 
 API 명세서: [docs/api/endpoints.md](docs/api/endpoints.md) (PDF: `docs/api/endpoints.pdf`, 기계용: `docs/api/openapi.json`)
+
+모델을 고쳤으면 마이그레이션을 만들고 내용을 확인한 뒤 같이 커밋합니다.
+
+```bash
+cd backend
+uv run alembic revision --autogenerate -m "무엇을 바꿨는지"
+uv run alembic upgrade head
+uv run pytest tests/integration   # 모델과 마이그레이션이 같은지 확인
+```
 
 의존성 추가는 `uv add <패키지>` / `uv add --dev <패키지>`로 하고, `uv.lock`도 함께 커밋합니다.
 
