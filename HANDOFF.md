@@ -108,12 +108,16 @@
 
 Git 저장소: `juvia2/acadesk` (`main`, `dev`, 작업 브랜치 `ju`). 아래 **뼈대만 있고 기능 코드는 없다.**
 
-- `backend/`: uv · Python 3.12 · FastAPI 프로젝트. 도메인별 빈 패키지(`modules/`, `ai/`, `workers/`, `integrations/`), ruff·pytest 설정, `uv.lock`.
+- `backend/`: uv · Python 3.12 · FastAPI 프로젝트, ruff·pytest 설정, `uv.lock`.
+  - **API 계약 132개 (MVP 95 · 확장 23 · 제안 13)**: 모듈마다 `schemas.py`(요청·응답)와 `router.py`. 인증·역할 검사는 동작하고, 본문은 모두 501(미구현)을 돌려준다. 서비스·DB 모델은 아직 없다.
+  - 엔드포인트마다 `access(단계, *역할)`로 출시 단계와 허용 역할을 적는다 (`api/deps.py`).
+  - 명세서: `docs/api/endpoints.md`(+PDF), `docs/api/openapi.json`. `scripts/export_api_spec.py`로 코드에서 생성.
 - `frontend/`: Next.js 16 (App Router, TypeScript, Tailwind) 기본 앱. 빌드 확인함.
 - 없음: 데이터베이스 모델·마이그레이션, docker-compose, CI, 실제 외부 연동.
 
 ## 최근 변경과 검증
 
+- 2026-11-01 (lshee9008, `lsh` 브랜치): 전체 API 엔드포인트 설계와 라우터·스키마 코드 작성, API 명세서 생성. ruff는 줄 길이를 formatter에 맡기도록 E501 제외. 검증: `pytest` 16개 통과(인증·역할·경로 충돌·입력 검증), `ruff check`·`ruff format --check` 통과.
 - 2026-10-31 (lshee9008, `lsh` 브랜치): `docs/features.md`에 "형제 연동" 기능 추가. 기존 제안 "형제 묶음 안내"를 여기에 합침. 킥오프 안건에 형제 할인 범위 안건 추가. 문서 변경이라 실행 테스트는 없음.
 - 2026-10-30 (lshee9008): uv·Next.js 뼈대를 만들고 GitHub에 올림. `docs/features.md`(기능 정리)와 킥오프 안건을 추가. 연주의 `HANDOFF.md`를 루트에 합치고 구현 상태, 역할 분담, 다국어 안내 결정, 저장소에 없는 기획 문서 목록을 반영. 검증: 프론트 `npm run build`, 백엔드 `ruff check`, 패키지 import 통과.
 

@@ -10,6 +10,7 @@
 - backend/src/acadesk/core/security.py
 - backend/src/acadesk/core/config.py
 - backend/src/acadesk/api/deps.py
+- backend/src/acadesk/api/v1/auth.py
 </aside>
 
 <aside>
@@ -32,7 +33,7 @@
 
 - backend/src/acadesk/modules/imports/
 - backend/src/acadesk/integrations/storage/
-- backend/src/acadesk/api/v1/imports.py
+- backend/src/acadesk/modules/imports/router.py
 </aside>
 
 <aside>
@@ -223,7 +224,7 @@
 📁
 
 - backend/src/acadesk/modules/approvals/
-- backend/src/acadesk/api/v1/approvals.py
+- backend/src/acadesk/modules/approvals/router.py
 </aside>
 
 <aside>
@@ -464,7 +465,7 @@
 📁
 
 - backend/src/acadesk/modules/messaging/replies.py
-- backend/src/acadesk/api/v1/public_replies.py
+- backend/src/acadesk/api/v1/public.py
 - frontend/src/app/r/[token]/
 </aside>
 

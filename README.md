@@ -10,12 +10,18 @@ cd backend
 uv sync                      # .venv 생성 + 의존성 설치 (uv.lock 기준)
 uv run ruff check .          # 린트
 uv run pytest                # 테스트
+ACADESK_AUTH_DEV_BYPASS=true uv run uvicorn acadesk.main:app --reload
+                             # http://localhost:8000/docs (Swagger), 개발용 원장 계정으로 로그인 생략
+uv run python ../scripts/export_api_spec.py
+                             # 라우터를 고친 뒤 API 명세서(docs/api/) 다시 생성
 
 # 프론트엔드 (Node 22+)
 cd frontend
 npm install
 npm run dev                  # http://localhost:3000
 ```
+
+API 명세서: [docs/api/endpoints.md](docs/api/endpoints.md) (PDF: `docs/api/endpoints.pdf`, 기계용: `docs/api/openapi.json`)
 
 의존성 추가는 `uv add <패키지>` / `uv add --dev <패키지>`로 하고, `uv.lock`도 함께 커밋합니다.
 
