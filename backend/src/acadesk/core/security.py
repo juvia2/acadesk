@@ -25,6 +25,7 @@ class CurrentUser(BaseModel):
     academy_id: uuid.UUID
     role: Role
     name: str
+    status: str = "active"  # pending_guardian_consent면 출석 등 일부 기능 제한
     student_id: uuid.UUID | None = None  # role=student: 연결된 학생 명부
     guardian_id: uuid.UUID | None = None  # role=parent: 연결된 보호자 (자녀는 student_guardians)
 
@@ -38,5 +39,21 @@ DEV_USER = CurrentUser(
 
 
 def decode_access_token(token: str) -> CurrentUser | None:
-    """액세스 토큰을 검증해 사용자를 돌려준다. 인증 방식이 정해지면 구현한다."""
-    return None
+    """액세스 토큰(JWT)을 검증해 사용자를 돌려준다. 유효하지 않으면 None."""
+    from acadesk.core.tokens import decode_access_claims
+
+    claims = decode_access_claims(token)
+    if claims is None:
+        return None
+    try:
+        return CurrentUser(
+            id=uuid.UUID(claims["sub"]),
+            academy_id=uuid.UUID(claims["aid"]),
+            role=Role(claims["role"]),
+            name=claims["name"],
+            status=claims.get("st", "active"),
+            student_id=uuid.UUID(claims["sid"]) if claims.get("sid") else None,
+            guardian_id=uuid.UUID(claims["gid"]) if claims.get("gid") else None,
+        )
+    except (KeyError, ValueError):
+        return None

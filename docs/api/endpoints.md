@@ -4175,6 +4175,7 @@ AI 분류 없이 의도가 기록되고, 같은 사유 후속 안내가 바로 �
 | 필드 | 타입 | 기본값 | 설명 |
 |---|---|---|---|
 | `detail`* | string |  |  |
+| `code` | string \| null |  | 프론트 분기용 오류 코드. 예: expired_qr, not_enrolled |
 
 <a id="schema-evidenceref"></a>
 
@@ -4502,7 +4503,7 @@ AI 분류 없이 의도가 기록되고, 같은 사유 후속 안내가 바로 �
 | `id`* | string (uuid) |  |  |
 | `role`* | [Role](#schema-role) |  |  |
 | `code` | string \| null |  | 발급 직후 응답에만 원문이 있다. 이후에는 null |
-| `code_hint`* | string |  | 끝 4자리. 목록에서 구분용 |
+| `code_hint`* | string |  | 끝 2자리. 목록에서 구분용 |
 | `student_id` | string (uuid) \| null |  |  |
 | `student_name` | string \| null |  |  |
 | `guardian_id` | string (uuid) \| null |  |  |
@@ -4738,11 +4739,11 @@ AI 분류 없이 의도가 기록되고, 같은 사유 후속 안내가 바로 �
 | `academy_id`* | string (uuid) |  |  |
 | `role`* | [Role](#schema-role) |  |  |
 | `name`* | string |  |  |
+| `status` | [AccountStatus](#schema-accountstatus) | `"active"` |  |
 | `student_id` | string (uuid) \| null |  |  |
 | `guardian_id` | string (uuid) \| null |  |  |
 | `academy_name`* | string |  |  |
 | `preferred_language` | string | `"ko"` |  |
-| `status` | [AccountStatus](#schema-accountstatus) | `"active"` |  |
 | `children` | [ChildBrief](#schema-childbrief)[] | `[]` | role=parent: 연결된 자녀 (형제 포함) |
 | `home`* | string |  | 역할별 첫 화면 경로. 예: /admin, /teacher, /student, /parent |
 

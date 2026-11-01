@@ -28,6 +28,9 @@ def page_params(
 
 class ErrorBody(BaseModel):
     detail: str
+    code: str | None = Field(
+        None, description="프론트 분기용 오류 코드. 예: expired_qr, not_enrolled"
+    )
 
 
 class IdsBody(BaseModel):

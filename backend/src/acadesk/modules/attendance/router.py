@@ -12,11 +12,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from acadesk.api.deps import MVP, CurrentUserDep, access
-from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
 from acadesk.core.security import STAFF, Role
+from acadesk.db.session import DbDep
 from acadesk.modules.lectures.schemas import LectureSessionOut
 
+from . import service
 from .schemas import (
     AlertAck,
     AlertStatus,
@@ -46,8 +47,8 @@ Paging = Annotated[PageParams, Depends(page_params)]
     description="회차를 open으로 바꾸고 QR 발급을 시작한다. 출석 가능 시간(시작 15분 전 ~ 종료) 안에서만.",
     **access(MVP, *STAFF),
 )
-def open_attendance(user: CurrentUserDep, session_id: uuid.UUID) -> LectureSessionOut:
-    raise not_implemented()
+def open_attendance(db: DbDep, user: CurrentUserDep, session_id: uuid.UUID) -> LectureSessionOut:
+    return service.open_attendance(db, user, session_id)
 
 
 @session_router.get(
@@ -57,13 +58,13 @@ def open_attendance(user: CurrentUserDep, session_id: uuid.UUID) -> LectureSessi
     "토큰은 저장하지 않는 서명 값이라 사진으로 공유해도 곧 무효가 된다.",
     **access(MVP, *STAFF),
 )
-def get_qr(user: CurrentUserDep, session_id: uuid.UUID) -> QrTokenOut:
-    raise not_implemented()
+def get_qr(db: DbDep, user: CurrentUserDep, session_id: uuid.UUID) -> QrTokenOut:
+    return service.get_qr(db, user, session_id)
 
 
 @session_router.get("", summary="실시간 출석 명단", **access(MVP, *STAFF))
-def get_roster(user: CurrentUserDep, session_id: uuid.UUID) -> SessionRoster:
-    raise not_implemented()
+def get_roster(db: DbDep, user: CurrentUserDep, session_id: uuid.UUID) -> SessionRoster:
+    return service.get_roster(db, user, session_id)
 
 
 @session_router.put(
@@ -73,9 +74,9 @@ def get_roster(user: CurrentUserDep, session_id: uuid.UUID) -> SessionRoster:
     **access(MVP, *STAFF),
 )
 def mark_manually(
-    user: CurrentUserDep, session_id: uuid.UUID, student_id: uuid.UUID, body: ManualMark
+    db: DbDep, user: CurrentUserDep, session_id: uuid.UUID, student_id: uuid.UUID, body: ManualMark
 ) -> AttendanceOut:
-    raise not_implemented()
+    return service.mark_manually(db, user, session_id, student_id, body)
 
 
 @session_router.post(
@@ -85,8 +86,8 @@ def mark_manually(
     "교사가 마감하지 않으면 회차 종료 시각에 워커가 자동 마감한다.",
     **access(MVP, *STAFF),
 )
-def close_attendance(user: CurrentUserDep, session_id: uuid.UUID) -> SessionRoster:
-    raise not_implemented()
+def close_attendance(db: DbDep, user: CurrentUserDep, session_id: uuid.UUID) -> SessionRoster:
+    return service.close_attendance(db, user, session_id)
 
 
 # ── 체크인 (학생) ───────────────────────────────────
@@ -99,8 +100,8 @@ def close_attendance(user: CurrentUserDep, session_id: uuid.UUID) -> SessionRost
     "실패 사유: 400 expired_qr · 403 not_enrolled · 409 attendance_closed / too_early",
     **access(MVP, Role.STUDENT),
 )
-def check_in(user: CurrentUserDep, body: CheckInBody) -> CheckInResult:
-    raise not_implemented()
+def check_in(db: DbDep, user: CurrentUserDep, body: CheckInBody) -> CheckInResult:
+    return service.check_in(db, user, body)
 
 
 # ── 조회·정정 (직원) ────────────────────────────────
@@ -108,6 +109,7 @@ def check_in(user: CurrentUserDep, body: CheckInBody) -> CheckInResult:
 
 @router.get("", summary="출결 조회", **access(MVP, *STAFF))
 def list_attendance(
+    db: DbDep,
     user: CurrentUserDep,
     paging: Paging,
     lecture_id: uuid.UUID | None = None,
@@ -117,7 +119,9 @@ def list_attendance(
     to: date | None = None,
     status_: Annotated[AttendanceStatus | None, Query(alias="status")] = None,
 ) -> Page[AttendanceOut]:
-    raise not_implemented()
+    return service.list_attendance(
+        db, user, paging, lecture_id, session_id, student_id, from_, to, status_
+    )
 
 
 @router.get(
@@ -127,16 +131,19 @@ def list_attendance(
     **access(MVP, *STAFF),
 )
 def list_alerts(
+    db: DbDep,
     user: CurrentUserDep,
     paging: Paging,
     status_: Annotated[AlertStatus, Query(alias="status")] = AlertStatus.OPEN,
 ) -> Page[AttendanceAlertOut]:
-    raise not_implemented()
+    return service.list_alerts(db, user, paging, status_)
 
 
 @router.post("/alerts/{alert_id}/ack", summary="결석 알림 확인", **access(MVP, *STAFF))
-def ack_alert(user: CurrentUserDep, alert_id: uuid.UUID, body: AlertAck) -> AttendanceAlertOut:
-    raise not_implemented()
+def ack_alert(
+    db: DbDep, user: CurrentUserDep, alert_id: uuid.UUID, body: AlertAck
+) -> AttendanceAlertOut:
+    return service.ack_alert(db, user, alert_id, body)
 
 
 @router.patch(
@@ -146,9 +153,9 @@ def ack_alert(user: CurrentUserDep, alert_id: uuid.UUID, body: AlertAck) -> Atte
     **access(MVP, *STAFF),
 )
 def correct_attendance(
-    user: CurrentUserDep, attendance_id: uuid.UUID, body: AttendanceCorrection
+    db: DbDep, user: CurrentUserDep, attendance_id: uuid.UUID, body: AttendanceCorrection
 ) -> AttendanceOut:
-    raise not_implemented()
+    return service.correct(db, user, attendance_id, body)
 
 
 routers = [session_router, router]

@@ -22611,6 +22611,18 @@
           "detail": {
             "type": "string",
             "title": "Detail"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Code",
+            "description": "프론트 분기용 오류 코드. 예: expired_qr, not_enrolled"
           }
         },
         "type": "object",
@@ -23673,7 +23685,7 @@
           "code_hint": {
             "type": "string",
             "title": "Code Hint",
-            "description": "끝 4자리. 목록에서 구분용"
+            "description": "끝 2자리. 목록에서 구분용"
           },
           "student_id": {
             "anyOf": [
@@ -24682,6 +24694,10 @@
             "type": "string",
             "title": "Name"
           },
+          "status": {
+            "$ref": "#/components/schemas/AccountStatus",
+            "default": "active"
+          },
           "student_id": {
             "anyOf": [
               {
@@ -24714,10 +24730,6 @@
             "type": "string",
             "title": "Preferred Language",
             "default": "ko"
-          },
-          "status": {
-            "$ref": "#/components/schemas/AccountStatus",
-            "default": "active"
           },
           "children": {
             "items": {

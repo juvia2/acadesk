@@ -5,83 +5,26 @@
 - 교사·학생·학부모: 학원이 발급한 일회용 초대 코드로 가입 (POST /auth/signup)
 """
 
-import uuid
-from enum import StrEnum
 from typing import Annotated
 
 from fastapi import APIRouter, Path, status
-from pydantic import BaseModel, Field
 
 from acadesk.api.deps import MVP, CurrentUserDep, access
-from acadesk.core.errors import not_implemented
-from acadesk.core.security import MEMBERS, CurrentUser, Role
+from acadesk.core.security import MEMBERS
+from acadesk.db.session import DbDep
+from acadesk.modules.academies import accounts
+from acadesk.modules.academies.auth_schemas import (
+    AcademyRegister,
+    InvitationPreview,
+    LoginBody,
+    MeOut,
+    RefreshBody,
+    SignupBody,
+    SignupResult,
+    TokenPair,
+)
 
 router = APIRouter(prefix="/auth", tags=["인증"])
-
-
-class LoginBody(BaseModel):
-    email: str
-    password: str
-
-
-class RefreshBody(BaseModel):
-    refresh_token: str
-
-
-class TokenPair(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-    expires_in: int
-
-
-class AcademyRegister(BaseModel):
-    academy_name: str
-    academy_phone: str | None = None
-    owner_name: str
-    email: str
-    password: str = Field(min_length=8)
-
-
-class InvitationPreview(BaseModel):
-    academy_name: str
-    role: Role
-    student_name_masked: str | None = Field(None, description="김*준. 학부모·학생 코드일 때")
-    expires_at: str
-
-
-class SignupBody(BaseModel):
-    code: str = Field(min_length=6, max_length=32)
-    name: str
-    email: str
-    password: str = Field(min_length=8)
-    phone: str | None = Field(None, description="학부모: 긴급 문자 받을 번호")
-    agree_terms: bool
-    agree_community_rules: bool = Field(False, description="학부모: 커뮤니티 이용 규칙 (2단계)")
-
-
-class AccountStatus(StrEnum):
-    ACTIVE = "active"
-    PENDING_GUARDIAN_CONSENT = "pending_guardian_consent"  # 만 14세 미만 학생
-
-
-class SignupResult(TokenPair):
-    status: AccountStatus
-
-
-class ChildBrief(BaseModel):
-    student_id: uuid.UUID
-    name: str
-    grade: str | None = None
-    lecture_names: list[str] = []
-
-
-class MeOut(CurrentUser):
-    academy_name: str
-    preferred_language: str = "ko"
-    status: AccountStatus = AccountStatus.ACTIVE
-    children: list[ChildBrief] = Field([], description="role=parent: 연결된 자녀 (형제 포함)")
-    home: str = Field(description="역할별 첫 화면 경로. 예: /admin, /teacher, /student, /parent")
 
 
 @router.post(
@@ -91,8 +34,8 @@ class MeOut(CurrentUser):
     status_code=status.HTTP_201_CREATED,
     **access(MVP),
 )
-def register_academy(body: AcademyRegister) -> TokenPair:
-    raise not_implemented()
+def register_academy(db: DbDep, body: AcademyRegister) -> TokenPair:
+    return accounts.register_academy(db, body)
 
 
 @router.get(
@@ -102,9 +45,10 @@ def register_academy(body: AcademyRegister) -> TokenPair:
     **access(MVP),
 )
 def preview_invitation(
+    db: DbDep,
     code: Annotated[str, Path(min_length=6, max_length=32)],
 ) -> InvitationPreview:
-    raise not_implemented()
+    return accounts.preview_invitation(db, code)
 
 
 @router.post(
@@ -115,18 +59,18 @@ def preview_invitation(
     status_code=status.HTTP_201_CREATED,
     **access(MVP),
 )
-def signup(body: SignupBody) -> SignupResult:
-    raise not_implemented()
+def signup(db: DbDep, body: SignupBody) -> SignupResult:
+    return accounts.signup(db, body)
 
 
 @router.post("/login", summary="로그인", **access(MVP))
-def login(body: LoginBody) -> TokenPair:
-    raise not_implemented()
+def login(db: DbDep, body: LoginBody) -> TokenPair:
+    return accounts.login(db, body)
 
 
 @router.post("/refresh", summary="토큰 갱신", **access(MVP))
-def refresh(body: RefreshBody) -> TokenPair:
-    raise not_implemented()
+def refresh(db: DbDep, body: RefreshBody) -> TokenPair:
+    return accounts.refresh(db, body.refresh_token)
 
 
 @router.post(
@@ -135,10 +79,10 @@ def refresh(body: RefreshBody) -> TokenPair:
     status_code=status.HTTP_204_NO_CONTENT,
     **access(MVP, *MEMBERS),
 )
-def logout(user: CurrentUserDep, body: RefreshBody) -> None:
-    raise not_implemented()
+def logout(db: DbDep, user: CurrentUserDep, body: RefreshBody) -> None:
+    accounts.logout(db, user, body.refresh_token)
 
 
 @router.get("/me", summary="내 정보·역할·첫 화면", **access(MVP, *MEMBERS))
-def me(user: CurrentUserDep) -> MeOut:
-    raise not_implemented()
+def me(db: DbDep, user: CurrentUserDep) -> MeOut:
+    return accounts.me(db, user)

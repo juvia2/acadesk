@@ -110,7 +110,7 @@ class InvitationOut(BaseModel):
     id: uuid.UUID
     role: Role
     code: str | None = Field(None, description="발급 직후 응답에만 원문이 있다. 이후에는 null")
-    code_hint: str = Field(description="끝 4자리. 목록에서 구분용")
+    code_hint: str = Field(description="끝 2자리. 목록에서 구분용")
     student_id: uuid.UUID | None = None
     student_name: str | None = None
     guardian_id: uuid.UUID | None = None

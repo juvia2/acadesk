@@ -8,7 +8,9 @@ from acadesk.api.deps import MVP, STAGE2, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
 from acadesk.core.security import STAFF, STAFF_ADMIN, Role
+from acadesk.db.session import DbDep
 
+from . import accounts
 from .schemas import (
     AcademyOut,
     AcademyUpdate,
@@ -135,8 +137,8 @@ def deactivate_user(user: CurrentUserDep, user_id: uuid.UUID) -> None:
     status_code=status.HTTP_201_CREATED,
     **access(MVP, *STAFF_ADMIN),
 )
-def create_invitation(user: CurrentUserDep, body: InvitationCreate) -> InvitationOut:
-    raise not_implemented()
+def create_invitation(db: DbDep, user: CurrentUserDep, body: InvitationCreate) -> InvitationOut:
+    return accounts.create_invitation(db, user, body)
 
 
 @invitations_router.post(
@@ -147,20 +149,21 @@ def create_invitation(user: CurrentUserDep, body: InvitationCreate) -> Invitatio
     **access(MVP, *STAFF_ADMIN),
 )
 def bulk_create_invitations(
-    user: CurrentUserDep, body: InvitationBulkCreate
+    db: DbDep, user: CurrentUserDep, body: InvitationBulkCreate
 ) -> list[InvitationOut]:
-    raise not_implemented()
+    return accounts.bulk_create_invitations(db, user, body)
 
 
 @invitations_router.get("", summary="초대 코드 목록", **access(MVP, *STAFF_ADMIN))
 def list_invitations(
+    db: DbDep,
     user: CurrentUserDep,
     paging: Annotated[PageParams, Depends(page_params)],
     role: Role | None = None,
     status_: Annotated[InvitationStatus | None, Query(alias="status")] = None,
     student_id: uuid.UUID | None = None,
 ) -> Page[InvitationOut]:
-    raise not_implemented()
+    return accounts.list_invitations(db, user, paging, role, status_, student_id)
 
 
 @invitations_router.delete(
@@ -169,8 +172,8 @@ def list_invitations(
     status_code=status.HTTP_204_NO_CONTENT,
     **access(MVP, *STAFF_ADMIN),
 )
-def revoke_invitation(user: CurrentUserDep, invitation_id: uuid.UUID) -> None:
-    raise not_implemented()
+def revoke_invitation(db: DbDep, user: CurrentUserDep, invitation_id: uuid.UUID) -> None:
+    accounts.revoke_invitation(db, user, invitation_id)
 
 
 routers = [academy_router, users_router, invitations_router]

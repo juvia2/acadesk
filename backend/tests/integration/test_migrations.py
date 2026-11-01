@@ -1,61 +1,16 @@
-"""마이그레이션을 실제 Postgres에 적용해 본다.
-
-DB가 없으면 건너뛴다. 로컬에서는:
-    docker compose -f infra/docker/docker-compose.yml up -d
-테스트는 같은 서버에 acadesk_test DB를 새로 만들어 쓴다 (개발 DB는 건드리지 않음).
-"""
+"""마이그레이션 검사: 모델과 일치, 감사 로그 트리거, enum CHECK, 되돌리기."""
 
 import uuid
-from pathlib import Path
 
 import pytest
-from alembic import command
 from alembic.autogenerate import compare_metadata
-from alembic.config import Config
 from alembic.migration import MigrationContext
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import make_url
-from sqlalchemy.exc import DBAPIError, IntegrityError, OperationalError
+from sqlalchemy import text
+from sqlalchemy.exc import DBAPIError, IntegrityError
 
-from acadesk.core.config import get_settings
 from acadesk.db.models import metadata
 
-BACKEND = Path(__file__).resolve().parents[2]
-TEST_DB = "acadesk_test"
-
-
-@pytest.fixture(scope="module")
-def db_url():
-    base = make_url(get_settings().database_url)
-    admin = create_engine(base, isolation_level="AUTOCOMMIT")
-    try:
-        with admin.connect() as conn:
-            conn.execute(text(f"DROP DATABASE IF EXISTS {TEST_DB} WITH (FORCE)"))
-            conn.execute(text(f"CREATE DATABASE {TEST_DB}"))
-    except OperationalError:
-        pytest.skip("Postgres에 연결할 수 없음 (docker compose up 필요)")
-    finally:
-        admin.dispose()
-    url = base.set(database=TEST_DB).render_as_string(hide_password=False)
-    yield url
-    admin = create_engine(base, isolation_level="AUTOCOMMIT")
-    with admin.connect() as conn:
-        conn.execute(text(f"DROP DATABASE IF EXISTS {TEST_DB} WITH (FORCE)"))
-    admin.dispose()
-
-
-def alembic(url: str, *args: str) -> None:
-    cfg = Config(str(BACKEND / "alembic.ini"))
-    cfg.cmd_opts = type("Opts", (), {"x": [f"url={url}"]})()  # env.py의 -x url=
-    getattr(command, args[0])(cfg, *args[1:])
-
-
-@pytest.fixture(scope="module")
-def engine(db_url):
-    alembic(db_url, "upgrade", "head")
-    eng = create_engine(db_url)
-    yield eng
-    eng.dispose()
+from .conftest import run_alembic
 
 
 def test_models_match_migrations(engine):
@@ -73,7 +28,7 @@ def seed_academy(conn) -> uuid.UUID:
     return academy
 
 
-def test_audit_log_is_append_only(engine):
+def test_audit_log_is_append_only(engine, clean):
     with engine.begin() as conn:
         academy = seed_academy(conn)
         log_id = uuid.uuid4()
@@ -92,7 +47,7 @@ def test_audit_log_is_append_only(engine):
             conn.execute(text(sql), {"id": log_id})
 
 
-def test_enum_check_rejects_unknown_value(engine):
+def test_enum_check_rejects_unknown_value(engine, clean):
     with pytest.raises(IntegrityError), engine.begin() as conn:
         academy = seed_academy(conn)
         conn.execute(
@@ -106,5 +61,5 @@ def test_enum_check_rejects_unknown_value(engine):
 
 def test_downgrade_to_base_and_back(db_url, engine):
     engine.dispose()
-    alembic(db_url, "downgrade", "base")
-    alembic(db_url, "upgrade", "head")
+    run_alembic(db_url, "downgrade", "base")
+    run_alembic(db_url, "upgrade", "head")

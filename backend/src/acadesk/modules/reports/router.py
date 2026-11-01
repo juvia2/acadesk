@@ -9,6 +9,9 @@ from fastapi import APIRouter, Query, status
 from acadesk.api.deps import MVP, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.security import STAFF, Role
+from acadesk.db.session import DbDep
+from acadesk.modules.academies import accounts
+from acadesk.modules.attendance import service as attendance
 from acadesk.modules.attendance.schemas import AttendanceOut, AttendanceSummary
 
 from .schemas import AddChildBody, ChildOut, ChildReport, MySchedule, ReportPeriod
@@ -30,9 +33,10 @@ def my_schedule(user: CurrentUserDep) -> MySchedule:
 
 @me_router.get("/attendance", summary="내 출결", **access(MVP, Role.STUDENT))
 def my_attendance(
-    user: CurrentUserDep, from_: FromQ = None, to: date | None = None
+    db: DbDep, user: CurrentUserDep, from_: FromQ = None, to: date | None = None
 ) -> list[AttendanceOut]:
-    raise not_implemented()
+    assert user.student_id is not None
+    return attendance.records_for_student(db, user.academy_id, user.student_id, from_, to)
 
 
 @me_router.get("/attendance/summary", summary="내 강의별 출석률", **access(MVP, Role.STUDENT))
@@ -46,8 +50,8 @@ def my_attendance_summary(
 
 
 @children_router.get("", summary="내 자녀 목록", **access(MVP, Role.PARENT))
-def list_children(user: CurrentUserDep) -> list[ChildOut]:
-    raise not_implemented()
+def list_children(db: DbDep, user: CurrentUserDep) -> list[ChildOut]:
+    return accounts.list_children(db, user)
 
 
 @children_router.post(
@@ -57,8 +61,8 @@ def list_children(user: CurrentUserDep) -> list[ChildOut]:
     status_code=status.HTTP_201_CREATED,
     **access(MVP, Role.PARENT),
 )
-def add_child(user: CurrentUserDep, body: AddChildBody) -> ChildOut:
-    raise not_implemented()
+def add_child(db: DbDep, user: CurrentUserDep, body: AddChildBody) -> ChildOut:
+    return accounts.add_child(db, user, body.code)
 
 
 @children_router.post(
@@ -67,8 +71,8 @@ def add_child(user: CurrentUserDep, body: AddChildBody) -> ChildOut:
     description="만 14세 미만 학생 가입에 필요한 법정대리인 동의. 승인 기록은 감사 로그에 남는다.",
     **access(MVP, Role.PARENT),
 )
-def approve_child_account(user: CurrentUserDep, student_id: uuid.UUID) -> ChildOut:
-    raise not_implemented()
+def approve_child_account(db: DbDep, user: CurrentUserDep, student_id: uuid.UUID) -> ChildOut:
+    return accounts.approve_child_account(db, user, student_id)
 
 
 @children_router.get(
@@ -93,9 +97,14 @@ def child_report(
     **access(MVP, Role.PARENT),
 )
 def child_attendance(
-    user: CurrentUserDep, student_id: uuid.UUID, from_: FromQ = None, to: date | None = None
+    db: DbDep,
+    user: CurrentUserDep,
+    student_id: uuid.UUID,
+    from_: FromQ = None,
+    to: date | None = None,
 ) -> list[AttendanceOut]:
-    raise not_implemented()
+    accounts.require_child(db, user, student_id)
+    return attendance.records_for_student(db, user.academy_id, student_id, from_, to)
 
 
 # ── 직원 ─────────────────────────────────────────────

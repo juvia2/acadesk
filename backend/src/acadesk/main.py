@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from acadesk.api.v1.router import api_router
 from acadesk.core.config import get_settings
+from acadesk.core.errors import AppError, app_error_handler
 from acadesk.core.schemas import ErrorBody
 
 
@@ -24,6 +25,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_exception_handler(AppError, app_error_handler)
     app.include_router(api_router, prefix=settings.api_prefix)
 
     @app.get("/health", tags=["상태"], summary="서버 상태 확인")

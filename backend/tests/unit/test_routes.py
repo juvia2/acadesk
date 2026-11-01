@@ -1,6 +1,7 @@
 """엔드포인트 계약 테스트: 인증·역할·경로 충돌·명세 메타데이터.
 
-서비스가 아직 없으므로 인증·권한을 통과한 요청은 501을 기대한다.
+DB 없이 돈다. DB 세션은 쓰면 실패하는 가짜로 바꾸고, 인증·역할·입력 검증을 통과했는지만 본다.
+실제 동작은 tests/integration에서 검사한다.
 """
 
 import uuid
@@ -10,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from acadesk.api.deps import get_current_user
 from acadesk.core.security import CurrentUser, Role
+from acadesk.db.session import get_db
 from acadesk.main import create_app
 
 ACADEMY = uuid.uuid4()
@@ -20,19 +22,34 @@ def user_with(role: Role) -> CurrentUser:
     return CurrentUser(id=uuid.uuid4(), academy_id=ACADEMY, role=role, name="테스트")
 
 
+BLOCKED = {401, 403, 422}
+
+
+def reached(res) -> bool:
+    """인증·역할·입력 검증을 통과해 서비스(또는 501)까지 갔는지."""
+    return res.status_code not in BLOCKED
+
+
+def no_db():
+    raise RuntimeError("단위 테스트에서는 DB를 쓰지 않는다")
+    yield
+
+
 @pytest.fixture
 def app():
-    return create_app()
+    app = create_app()
+    app.dependency_overrides[get_db] = no_db
+    return app
 
 
 @pytest.fixture
 def client_as(app):
     def make(role: Role) -> TestClient:
         app.dependency_overrides[get_current_user] = lambda: user_with(role)
-        return TestClient(app)
+        return TestClient(app, raise_server_exceptions=False)
 
     yield make
-    app.dependency_overrides.clear()
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_openapi_operations_have_stage(app):
@@ -51,21 +68,19 @@ def test_operation_ids_unique(app):
 
 
 def test_requires_login(app):
-    client = TestClient(app)
+    client = TestClient(app, raise_server_exceptions=False)
     assert client.get("/api/v1/students").status_code == 401
     bad = client.get("/api/v1/students", headers={"Authorization": "Bearer nope"})
     assert bad.status_code == 401
 
 
 def test_open_endpoints_skip_login(app):
-    client = TestClient(app)
+    client = TestClient(app, raise_server_exceptions=False)
     assert client.get("/health").status_code == 200
-    assert (
-        client.post("/api/v1/auth/login", json={"email": "a", "password": "b"}).status_code == 501
-    )
+    assert reached(client.post("/api/v1/auth/login", json={"email": "a", "password": "b"}))
     token = "t" * 32
-    assert client.get(f"/api/v1/public/replies/{token}").status_code == 501
-    assert client.get("/api/v1/auth/invitations/ABCD1234").status_code == 501
+    assert reached(client.get(f"/api/v1/public/replies/{token}"))
+    assert reached(client.get("/api/v1/auth/invitations/ABCD1234"))
     signup = {
         "code": "ABCD1234",
         "name": "n",
@@ -73,8 +88,8 @@ def test_open_endpoints_skip_login(app):
         "password": "12345678",
         "agree_terms": True,
     }
-    assert client.post("/api/v1/auth/signup", json=signup).status_code == 501
-    assert client.post("/api/v1/webhooks/sms/mock/delivery", json={}).status_code == 501
+    assert reached(client.post("/api/v1/auth/signup", json=signup))
+    assert reached(client.post("/api/v1/webhooks/sms/mock/delivery", json={}))
 
 
 @pytest.mark.parametrize(
@@ -95,13 +110,13 @@ def test_teacher_blocked_from_admin_endpoints(client_as, method, path, body):
 
 def test_teacher_can_run_attendance(client_as):
     client = client_as(Role.TEACHER)
-    assert client.post(f"/api/v1/lecture-sessions/{ANY_ID}/attendance/open").status_code == 501
-    assert client.get(f"/api/v1/lecture-sessions/{ANY_ID}/attendance/qr").status_code == 501
+    assert reached(client.post(f"/api/v1/lecture-sessions/{ANY_ID}/attendance/open"))
+    assert reached(client.get(f"/api/v1/lecture-sessions/{ANY_ID}/attendance/qr"))
 
 
 def test_only_students_check_in(client_as):
     body = {"token": "x" * 20}
-    assert client_as(Role.STUDENT).post("/api/v1/attendance/check-in", json=body).status_code == 501
+    assert reached(client_as(Role.STUDENT).post("/api/v1/attendance/check-in", json=body))
     for role in (Role.TEACHER, Role.PARENT, Role.OWNER):
         res = client_as(role).post("/api/v1/attendance/check-in", json=body)
         assert res.status_code == 403, role
@@ -136,20 +151,24 @@ def test_only_students_check_in(client_as):
     ],
 )
 def test_v2_role_boundaries(client_as, role, method, path, expected):
-    assert client_as(role).request(method, path).status_code == expected
+    res = client_as(role).request(method, path)
+    if expected == 403:
+        assert res.status_code == 403
+    else:
+        assert reached(res)
 
 
 def test_parent_and_student_can_ask(client_as):
     body = {"title": "질문", "body": "내용"}
     for role in (Role.STUDENT, Role.PARENT):
-        assert client_as(role).post("/api/v1/questions", json=body).status_code == 501
+        assert reached(client_as(role).post("/api/v1/questions", json=body))
     assert client_as(Role.TEACHER).post("/api/v1/questions", json=body).status_code == 403
 
 
 def test_owner_passes_role_checks(client_as):
     client = client_as(Role.OWNER)
-    assert client.get("/api/v1/rules/settings").status_code == 501
-    assert client.get("/api/v1/audit-logs").status_code == 501
+    assert reached(client.get("/api/v1/rules/settings"))
+    assert reached(client.get("/api/v1/audit-logs"))
 
 
 @pytest.mark.parametrize(
@@ -165,7 +184,7 @@ def test_owner_passes_role_checks(client_as):
 )
 def test_static_paths_not_captured_by_id_paths(client_as, path):
     # /{id} 경로가 먼저 잡으면 UUID 검증 실패로 422가 난다
-    assert client_as(Role.OWNER).get(path).status_code == 501
+    assert reached(client_as(Role.OWNER).get(path))
 
 
 def test_validation_rejects_bad_input(client_as):

@@ -7,7 +7,9 @@ from acadesk.api.deps import MVP, STAGE2, CurrentUserDep, access
 from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
 from acadesk.core.security import STAFF, STAFF_ADMIN
+from acadesk.db.session import DbDep
 
+from . import service
 from .schemas import (
     GuardianCreate,
     GuardianLinkCreate,
@@ -43,6 +45,7 @@ Paging = Annotated[PageParams, Depends(page_params)]
 
 @students_router.get("", summary="학생 목록·검색", **access(MVP, *STAFF))
 def list_students(
+    db: DbDep,
     user: CurrentUserDep,
     paging: Paging,
     q: str | None = None,
@@ -50,19 +53,19 @@ def list_students(
     lecture_id: uuid.UUID | None = None,
     household_id: uuid.UUID | None = None,
 ) -> Page[StudentSummary]:
-    raise not_implemented()
+    return service.list_students(db, user, paging, q, status_, lecture_id, household_id)
 
 
 @students_router.post(
     "", summary="학생 등록", status_code=status.HTTP_201_CREATED, **access(MVP, *STAFF_ADMIN)
 )
-def create_student(user: CurrentUserDep, body: StudentCreate) -> StudentOut:
-    raise not_implemented()
+def create_student(db: DbDep, user: CurrentUserDep, body: StudentCreate) -> StudentOut:
+    return service.create_student(db, user, body)
 
 
 @students_router.get("/{student_id}", summary="학생 상세", **access(MVP, *STAFF))
-def get_student(user: CurrentUserDep, student_id: uuid.UUID) -> StudentOut:
-    raise not_implemented()
+def get_student(db: DbDep, user: CurrentUserDep, student_id: uuid.UUID) -> StudentOut:
+    return service.get_student(db, user, student_id)
 
 
 @students_router.patch("/{student_id}", summary="학생 정보·상태 수정", **access(MVP, *STAFF_ADMIN))
@@ -104,9 +107,9 @@ def add_note(user: CurrentUserDep, student_id: uuid.UUID, body: NoteCreate) -> T
     **access(MVP, *STAFF_ADMIN),
 )
 def link_guardian(
-    user: CurrentUserDep, student_id: uuid.UUID, body: GuardianLinkCreate
+    db: DbDep, user: CurrentUserDep, student_id: uuid.UUID, body: GuardianLinkCreate
 ) -> StudentOut:
-    raise not_implemented()
+    return service.link_guardian(db, user, student_id, body)
 
 
 @students_router.patch(
@@ -148,8 +151,8 @@ def search_guardians(
 @guardians_router.post(
     "", summary="보호자 등록", status_code=status.HTTP_201_CREATED, **access(MVP, *STAFF_ADMIN)
 )
-def create_guardian(user: CurrentUserDep, body: GuardianCreate) -> GuardianOut:
-    raise not_implemented()
+def create_guardian(db: DbDep, user: CurrentUserDep, body: GuardianCreate) -> GuardianOut:
+    return service.create_guardian(db, user, body)
 
 
 @guardians_router.get("/{guardian_id}", summary="보호자 상세", **access(MVP, *STAFF))

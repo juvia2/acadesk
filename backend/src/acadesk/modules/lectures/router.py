@@ -5,11 +5,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query, status
 
 from acadesk.api.deps import MVP, CurrentUserDep, access
-from acadesk.core.errors import not_implemented
 from acadesk.core.schemas import Page, PageParams, page_params
 from acadesk.core.security import STAFF, STAFF_ADMIN
+from acadesk.db.session import DbDep
 from acadesk.modules.students.schemas import StudentSummary
 
+from . import service
 from .schemas import (
     EnrollBody,
     GenerateSessionsBody,
@@ -38,12 +39,13 @@ Paging = Annotated[PageParams, Depends(page_params)]
     **access(MVP, *STAFF),
 )
 def list_lectures(
+    db: DbDep,
     user: CurrentUserDep,
     mine: bool = False,
     teacher_id: uuid.UUID | None = None,
     archived: bool = False,
 ) -> list[LectureOut]:
-    raise not_implemented()
+    return service.list_lectures(db, user, mine, teacher_id, archived)
 
 
 @lectures_router.post(
@@ -53,28 +55,32 @@ def list_lectures(
     status_code=status.HTTP_201_CREATED,
     **access(MVP, *STAFF_ADMIN),
 )
-def create_lecture(user: CurrentUserDep, body: LectureCreate) -> LectureOut:
-    raise not_implemented()
+def create_lecture(db: DbDep, user: CurrentUserDep, body: LectureCreate) -> LectureOut:
+    return service.create_lecture(db, user, body)
 
 
 @lectures_router.get("/{lecture_id}", summary="강의 상세", **access(MVP, *STAFF))
-def get_lecture(user: CurrentUserDep, lecture_id: uuid.UUID) -> LectureOut:
-    raise not_implemented()
+def get_lecture(db: DbDep, user: CurrentUserDep, lecture_id: uuid.UUID) -> LectureOut:
+    return service.get_lecture(db, user, lecture_id)
 
 
 @lectures_router.patch("/{lecture_id}", summary="강의 수정·종강", **access(MVP, *STAFF_ADMIN))
-def update_lecture(user: CurrentUserDep, lecture_id: uuid.UUID, body: LectureUpdate) -> LectureOut:
-    raise not_implemented()
+def update_lecture(
+    db: DbDep, user: CurrentUserDep, lecture_id: uuid.UUID, body: LectureUpdate
+) -> LectureOut:
+    return service.update_lecture(db, user, lecture_id, body)
 
 
 @lectures_router.get("/{lecture_id}/students", summary="수강생 목록", **access(MVP, *STAFF))
-def list_enrolled(user: CurrentUserDep, lecture_id: uuid.UUID) -> list[StudentSummary]:
-    raise not_implemented()
+def list_enrolled(db: DbDep, user: CurrentUserDep, lecture_id: uuid.UUID) -> list[StudentSummary]:
+    return service.list_enrolled(db, user, lecture_id)
 
 
 @lectures_router.post("/{lecture_id}/students", summary="수강생 등록", **access(MVP, *STAFF_ADMIN))
-def enroll_students(user: CurrentUserDep, lecture_id: uuid.UUID, body: EnrollBody) -> LectureOut:
-    raise not_implemented()
+def enroll_students(
+    db: DbDep, user: CurrentUserDep, lecture_id: uuid.UUID, body: EnrollBody
+) -> LectureOut:
+    return service.enroll(db, user, lecture_id, body)
 
 
 @lectures_router.delete(
@@ -84,8 +90,10 @@ def enroll_students(user: CurrentUserDep, lecture_id: uuid.UUID, body: EnrollBod
     status_code=status.HTTP_204_NO_CONTENT,
     **access(MVP, *STAFF_ADMIN),
 )
-def unenroll_student(user: CurrentUserDep, lecture_id: uuid.UUID, student_id: uuid.UUID) -> None:
-    raise not_implemented()
+def unenroll_student(
+    db: DbDep, user: CurrentUserDep, lecture_id: uuid.UUID, student_id: uuid.UUID
+) -> None:
+    service.unenroll(db, user, lecture_id, student_id)
 
 
 @lectures_router.post(
@@ -95,9 +103,9 @@ def unenroll_student(user: CurrentUserDep, lecture_id: uuid.UUID, student_id: uu
     **access(MVP, *STAFF_ADMIN),
 )
 def generate_sessions(
-    user: CurrentUserDep, lecture_id: uuid.UUID, body: GenerateSessionsBody
+    db: DbDep, user: CurrentUserDep, lecture_id: uuid.UUID, body: GenerateSessionsBody
 ) -> list[LectureSessionOut]:
-    raise not_implemented()
+    return service.generate_sessions(db, user, lecture_id, body.from_, body.to)
 
 
 # ── 강의 회차 ───────────────────────────────────────
@@ -110,6 +118,7 @@ def generate_sessions(
     **access(MVP, *STAFF),
 )
 def list_sessions(
+    db: DbDep,
     user: CurrentUserDep,
     paging: Paging,
     date_: Annotated[date | None, Query(alias="date")] = None,
@@ -119,7 +128,7 @@ def list_sessions(
     mine: bool = False,
     status_: Annotated[SessionStatus | None, Query(alias="status")] = None,
 ) -> Page[LectureSessionOut]:
-    raise not_implemented()
+    return service.list_sessions(db, user, paging, date_, from_, to, lecture_id, mine, status_)
 
 
 @sessions_router.post(
@@ -128,13 +137,13 @@ def list_sessions(
     status_code=status.HTTP_201_CREATED,
     **access(MVP, *STAFF),
 )
-def create_session(user: CurrentUserDep, body: SessionCreate) -> LectureSessionOut:
-    raise not_implemented()
+def create_session(db: DbDep, user: CurrentUserDep, body: SessionCreate) -> LectureSessionOut:
+    return service.create_session(db, user, body)
 
 
 @sessions_router.get("/{session_id}", summary="회차 상세", **access(MVP, *STAFF))
-def get_session(user: CurrentUserDep, session_id: uuid.UUID) -> LectureSessionOut:
-    raise not_implemented()
+def get_session(db: DbDep, user: CurrentUserDep, session_id: uuid.UUID) -> LectureSessionOut:
+    return service.get_session(db, user, session_id)
 
 
 @sessions_router.patch(
@@ -144,9 +153,9 @@ def get_session(user: CurrentUserDep, session_id: uuid.UUID) -> LectureSessionOu
     **access(MVP, *STAFF),
 )
 def update_session(
-    user: CurrentUserDep, session_id: uuid.UUID, body: SessionUpdate
+    db: DbDep, user: CurrentUserDep, session_id: uuid.UUID, body: SessionUpdate
 ) -> LectureSessionOut:
-    raise not_implemented()
+    return service.update_session(db, user, session_id, body)
 
 
 routers = [lectures_router, sessions_router]

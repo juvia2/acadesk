@@ -8,7 +8,7 @@
 📁
 
 - backend/src/acadesk/api/v1/auth.py
-- backend/src/acadesk/modules/academies/ (invitations)
+- backend/src/acadesk/modules/academies/accounts.py (구현 완료)
 - backend/src/acadesk/core/security.py
 - backend/src/acadesk/api/deps.py
 </aside>
@@ -58,7 +58,7 @@
 📁
 
 - backend/src/acadesk/modules/attendance/qr.py (구현 완료)
-- backend/src/acadesk/modules/attendance/router.py
+- backend/src/acadesk/modules/attendance/service.py (구현 완료)
 - frontend/src/app/teacher/sessions/[id]/qr/
 - frontend/src/app/student/scan/
 </aside>
